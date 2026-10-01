@@ -208,10 +208,14 @@ button.modcard:hover{border-color:var(--node)}
 .quiz-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .btn{font:inherit;font-size:14px;border:1px solid var(--node);background:var(--node);color:var(--panel);padding:8px 14px;border-radius:9px;cursor:pointer;font-weight:700}
 .btn.ghost{background:transparent;color:var(--node)}
-.diahead{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.diatools{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px;margin-top:10px}
 .replay{font:inherit;font-size:14px;font-weight:700;flex:none;border:1px solid var(--node);background:var(--panel);color:var(--node);padding:6px 12px;border-radius:999px;cursor:pointer;white-space:nowrap}
 .replay:hover:not(:disabled){background:var(--hover)}
 .replay:disabled{opacity:.4;cursor:default}
+.diainfo[open]{flex-basis:100%}
+.diainfo>summary{display:inline-block;list-style:none;font-size:14px;font-weight:700;color:var(--node);border:1px solid var(--node);border-radius:999px;padding:5px 12px;cursor:pointer}
+.diainfo>summary::-webkit-details-marker{display:none}
+.diainfo[open]>summary{background:var(--hover)}
 .btn:disabled{opacity:.45;cursor:default}
 .result{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--band)}
 .result.good{border-left:4px solid var(--ok)}
@@ -354,7 +358,7 @@ img{max-width:100%}
 
 <div class="lab">
   <section class="panel" aria-label="Pathway diagram">
-    <div class="diahead"><h2>Step 2 · Trace the pathway (brainstem viewed from the front)</h2><button class="replay" id="replay" type="button" disabled>↻ Replay</button></div>
+    <h2>Step 2 · Trace the pathway (brainstem viewed from the front)</h2>
     <p class="diaexam" id="diaExam" aria-live="polite" hidden></p>
     <svg id="dia" viewBox="0 0 520 630" role="img" aria-label="Schematic of the horizontal gaze pathway from frontal eye fields to the extraocular muscles">
       <text class="lbl" x="10" y="14" font-weight="500">R</text>
@@ -424,6 +428,8 @@ img{max-width:100%}
       <g id="marks"></g>
       <g id="pulses"></g>
     </svg>
+    <div class="diatools"><button class="replay" id="replay" type="button" disabled>↻ Replay</button>
+    <details class="diainfo" id="diaInfo"><summary aria-label="Info: how to read this diagram">ⓘ Info</summary>
     <p class="hint" id="diaHint">Pathways not used for the current movement are faded; choose Primary to see them all. Tap any structure (FEF, PPRF, VI nucleus, MLF, CN VI or CN III) to place or remove a lesion.</p>
     <div class="legend">
       <span id="lgSignal"><i class="sw" style="background:var(--sig-supra)"></i><i class="sw" style="background:var(--sig-inter);margin-left:-4px"></i><i class="sw" style="background:var(--sig-infra);margin-left:-4px"></i>Active signal (supra · inter · infranuclear)</span>
@@ -436,6 +442,7 @@ img{max-width:100%}
       <span><i class="sw" style="background:var(--inter)"></i>Internuclear (MLF)</span>
       <span><i class="sw" style="background:var(--infra)"></i>Infranuclear (CN III, CN VI)</span>
     </div>
+    </details></div>
   </section>
 
   <div class="col">
@@ -492,7 +499,7 @@ img{max-width:100%}
 
 <div class="lab">
   <section class="panel" aria-label="Visual pathway diagram">
-    <div class="diahead"><h2>Step 2 · Trace the pathway (viewed from above)</h2><button class="replay" id="m5replay" type="button" disabled>↻ Replay</button></div>
+    <h2>Step 2 · Trace the pathway (viewed from above)</h2>
     <svg id="m5dia" viewBox="0 0 520 610" role="img" aria-label="Visual pathway from the eyes to the occipital cortex, viewed from above">
       <g aria-hidden="true">
         <path class="tissue" d="M260,128 C385,128 472,192 472,330 C472,472 400,598 260,598 C120,598 48,472 48,330 C48,192 135,128 260,128 Z"/>
@@ -542,12 +549,15 @@ img{max-width:100%}
       <g id="m5marks"></g>
       <g id="m5pulses"></g>
     </svg>
+    <div class="diatools"><button class="replay" id="m5replay" type="button" disabled>↻ Replay</button>
+    <details class="diainfo" id="m5diaInfo"><summary aria-label="Info: how to read this diagram">ⓘ Info</summary>
     <p class="hint" id="m5hint">Viewed from above: the patient's left is on your left. Coral fibres come from the nasal retina and cross at the chiasm; grey fibres come from the temporal retina and stay on the same side. Tap any structure to place or remove a lesion.</p>
     <div class="legend">
       <span id="m5lgSignal"><i class="sw" style="background:var(--signal)"></i>Traced signal</span>
       <span><i class="sw" style="background:var(--lesion)"></i>Lesion</span>
       <span id="m5lgGuess" hidden><i class="sw" style="background:var(--guess)"></i>Your answer</span>
     </div>
+    </details></div>
   </section>
 
   <div class="col">
@@ -656,10 +666,11 @@ const narrow=()=>window.matchMedia('(max-width:880px)').matches;
 function bringIntoView(el){
   const r=el.getBoundingClientRect(),vh=window.innerHeight,seen=Math.min(r.bottom,vh)-Math.max(r.top,0);
   if(!narrow()||seen>=Math.min(r.height,vh)*0.6)return Promise.resolve();
-  el.scrollIntoView({behavior:reduceMotion()?'auto':'smooth',block:'center'});
+  window.scrollTo({top:scrollY+r.top-56,behavior:reduceMotion()?'auto':'smooth'});
   return new Promise(res=>{const t=setTimeout(()=>{io.disconnect();res()},1500);
     const io=new IntersectionObserver(es=>{if(es[0].intersectionRatio>=0.6){io.disconnect();clearTimeout(t);setTimeout(res,150)}},{threshold:0.6});io.observe(el)});
 }
+document.getElementById('diaInfo').open=!narrow();
 
 // hit areas for nerve/tract lesions
 const hits=$('hits');
@@ -877,7 +888,7 @@ document.querySelectorAll('[data-test]').forEach(b=>b.addEventListener('click',(
 document.querySelectorAll('[data-dir]').forEach(b=>b.addEventListener('click',()=>{stopExam();dir=b.dataset.dir;lastDir=dir;syncButtons();run();}));
 
 // ---------- modes & quiz ----------
-function setMode(m){stopExam();mode=m;
+function setMode(m){stopExam();mode=m;$('diaInfo').open=m==='quiz'||!narrow();
   $('mExplore').setAttribute('aria-pressed',m==='explore');$('mQuiz').setAttribute('aria-pressed',m==='quiz');
   $('casePanel').hidden=m==='quiz';$('quizBox').hidden=m!=='quiz';$('trace').hidden=m==='quiz';$('lgGuess').hidden=m!=='quiz';$('lgSignal').hidden=m==='quiz';
   $('diaHint').textContent=m==='quiz'?'Tap the structure(s) you think are damaged. The signal path is hidden in this mode.':'Pathways not used for the current movement are faded; choose Primary to see them all. Tap any structure (FEF, PPRF, VI nucleus, MLF, CN VI or CN III) to place or remove a lesion.';
@@ -958,10 +969,11 @@ const narrow=()=>window.matchMedia('(max-width:880px)').matches;
 function bringIntoView(el){
   const r=el.getBoundingClientRect(),vh=window.innerHeight,seen=Math.min(r.bottom,vh)-Math.max(r.top,0);
   if(!narrow()||seen>=Math.min(r.height,vh)*0.6)return Promise.resolve();
-  el.scrollIntoView({behavior:reduceMotion()?'auto':'smooth',block:'center'});
+  window.scrollTo({top:scrollY+r.top-56,behavior:reduceMotion()?'auto':'smooth'});
   return new Promise(res=>{const t=setTimeout(()=>{io.disconnect();res()},1500);
     const io=new IntersectionObserver(es=>{if(es[0].intersectionRatio>=0.6){io.disconnect();clearTimeout(t);setTimeout(res,150)}},{threshold:0.6});io.observe(el)});
 }
+document.getElementById('m5diaInfo').open=!narrow();
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const SD={L:'left',R:'right'},cap=t=>t[0].toUpperCase()+t.slice(1),other=s=>s==='L'?'R':'L';
 
@@ -1136,7 +1148,7 @@ $('m5fields').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')ret
 function renderChips(){const m=matchPreset();$('m5chips').innerHTML=Object.entries(PRESETS).map(([k,v])=>`<button data-p="${k}" aria-pressed="${k===m}">${v.name}</button>`).join('')}
 $('m5chips').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;lesions=new Set(PRESETS[b.dataset.p].les);sel=null;refresh(true)});
 function refresh(retrace){renderChips();renderMarks();renderFields();renderPupils();renderFindings();if(retrace)trace()}
-function setMode(m){mode=m;sel=null;
+function setMode(m){mode=m;sel=null;$('m5diaInfo').open=m==='quiz'||!narrow();
   $('m5Explore').setAttribute('aria-pressed',m==='explore');$('m5Quiz').setAttribute('aria-pressed',m==='quiz');
   $('m5casePanel').hidden=m==='quiz';$('m5quizBox').hidden=m!=='quiz';$('m5trace').hidden=m==='quiz';
   $('m5lgGuess').hidden=m!=='quiz';$('m5lgSignal').hidden=m==='quiz';
