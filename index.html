@@ -49,7 +49,7 @@ button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--node);outl
 .lab{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:18px;align-items:start}
 @media (max-width:880px){.lab{grid-template-columns:minmax(0,1fr)}}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;min-width:0}
-.panel h2{font-family:var(--f-mono);font-size:11.5px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.panel h2{font-family:var(--f-display);font-size:1.2rem;font-weight:700;line-height:1.25;color:var(--node);margin:0 0 12px}
 .col{display:grid;gap:18px;min-width:0}
 .hint{font-size:13.5px;color:var(--muted);margin:8px 0 0}
 .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);margin-top:8px}
@@ -191,7 +191,7 @@ button.modcard:hover{border-color:var(--node)}
 .caption{font-size:13px;color:var(--muted);margin:4px 0 12px}
 .controls{display:grid;gap:10px}
 .ctrl-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
-.ctrl-row .k{font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);min-width:76px}
+.ctrl-row .k,.pt-ctrl p.k{font-family:var(--f-mono);font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--node);min-width:76px}
 
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chips button{font:inherit;font-size:13.5px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:6px 11px;border-radius:999px;cursor:pointer}
@@ -208,12 +208,25 @@ button.modcard:hover{border-color:var(--node)}
 .quiz-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .btn{font:inherit;font-size:14px;border:1px solid var(--node);background:var(--node);color:var(--panel);padding:8px 14px;border-radius:9px;cursor:pointer;font-weight:700}
 .btn.ghost{background:transparent;color:var(--node)}
+.diahead{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.replay{font:inherit;font-size:14px;font-weight:700;flex:none;border:1px solid var(--node);background:var(--panel);color:var(--node);padding:6px 12px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.replay:hover:not(:disabled){background:var(--hover)}
+.replay:disabled{opacity:.4;cursor:default}
 .btn:disabled{opacity:.45;cursor:default}
 .result{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--band)}
 .result.good{border-left:4px solid var(--ok)}
 .result.bad{border-left:4px solid var(--lesion)}
 footer{margin-top:18px;font-size:12.5px;color:var(--muted)}
 @media (prefers-reduced-motion: reduce){.globe,.lidg,.target{transition:none}.nys-pos,.nys-neg{animation:none}.block{animation:none;opacity:.8}}
+/* Phones: larger text, and diagram labels scaled up to offset the shrunken SVG */
+@media (max-width:880px){
+  body{font-size:16px}
+  .hint,.caption,.legend{font-size:14.5px}
+  .chips button,.btn{font-size:15px}
+  .testline{font-size:13.5px}
+  .lbl{font-size:14px}.lbl.sm{font-size:12.5px}#m5dia .lbl.sm{font-size:13px}.bandlbl{font-size:12px}.inlbl{font-size:11px}
+  .tlabel,.eyecap,.nyscap{font-size:12px}
+}
 </style>
 <style>
 /* page reset for standalone hosting */
@@ -320,9 +333,9 @@ img{max-width:100%}
       <div class="controls">
         <div class="ctrl-row"><span class="k">Gaze</span>
           <div class="seg" role="group" aria-label="Gaze direction">
-            <button data-dir="R" aria-pressed="false">◀ Patient's right</button>
+            <button data-dir="R" aria-pressed="false">◀ Look RIGHT</button>
             <button data-dir="C" aria-pressed="false">Primary</button>
-            <button data-dir="L" aria-pressed="true">Patient's left ▶</button>
+            <button data-dir="L" aria-pressed="true">Look LEFT ▶</button>
           </div>
         </div>
         <div class="ctrl-row"><span class="k">Test</span>
@@ -341,7 +354,7 @@ img{max-width:100%}
 
 <div class="lab">
   <section class="panel" aria-label="Pathway diagram">
-    <h2>Step 2 · Trace the pathway (brainstem viewed from the front)</h2>
+    <div class="diahead"><h2>Step 2 · Trace the pathway (brainstem viewed from the front)</h2><button class="replay" id="replay" type="button" disabled>↻ Replay</button></div>
     <p class="diaexam" id="diaExam" aria-live="polite" hidden></p>
     <svg id="dia" viewBox="0 0 520 630" role="img" aria-label="Schematic of the horizontal gaze pathway from frontal eye fields to the extraocular muscles">
       <text class="lbl" x="10" y="14" font-weight="500">R</text>
@@ -479,7 +492,7 @@ img{max-width:100%}
 
 <div class="lab">
   <section class="panel" aria-label="Visual pathway diagram">
-    <h2>Step 2 · Trace the pathway (viewed from above)</h2>
+    <div class="diahead"><h2>Step 2 · Trace the pathway (viewed from above)</h2><button class="replay" id="m5replay" type="button" disabled>↻ Replay</button></div>
     <svg id="m5dia" viewBox="0 0 520 610" role="img" aria-label="Visual pathway from the eyes to the occipital cortex, viewed from above">
       <g aria-hidden="true">
         <path class="tissue" d="M260,128 C385,128 472,192 472,330 C472,472 400,598 260,598 C120,598 48,472 48,330 C48,192 135,128 260,128 Z"/>
@@ -807,7 +820,7 @@ function setTarget(){
 }
 
 async function run(quiet){
-  const my=++runId;const st=compute();setTarget();renderFindings(st);clearActive();
+  const my=++runId;const st=compute();$('replay').hidden=mode==='quiz';$('replay').disabled=!st.chains;setTarget();renderFindings(st);clearActive();
   renderSteps(stepsFor(test,dir));
   if(!st.chains){setFocus(null);setEyes(st);return}
   const chs=[st.chains.R,st.chains.L];setFocus(chs);
@@ -856,6 +869,9 @@ $('chips').addEventListener('click',e=>{const b=e.target.closest('button');if(!b
 function syncButtons(){
   document.querySelectorAll('[data-test]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.test===test));
   document.querySelectorAll('[data-dir]').forEach(b=>{b.setAttribute('aria-pressed',test!=='near'&&b.dataset.dir===dir);b.disabled=test==='near'});
+  // In Doll's head the patient fixates while the head turns, so the buttons name where the eyes go, not where the patient looks
+  const w=test==='vor'?'Eyes':'Look';
+  document.querySelector('[data-dir="R"]').textContent=`◀ ${w} RIGHT`;document.querySelector('[data-dir="L"]').textContent=`${w} LEFT ▶`;
 }
 document.querySelectorAll('[data-test]').forEach(b=>b.addEventListener('click',()=>{stopExam();test=b.dataset.test;if(test!=='near')dir='C';syncButtons();run();}));
 document.querySelectorAll('[data-dir]').forEach(b=>b.addEventListener('click',()=>{stopExam();dir=b.dataset.dir;lastDir=dir;syncButtons();run();}));
@@ -903,6 +919,7 @@ async function fullExam(){
   if(examId===my){$('examStatus').textContent='Exam complete';$('diaExam').innerHTML='<span>Full exam</span> Complete';$('fullExam').disabled=false}
 }
 $('fullExam').addEventListener('click',fullExam);
+$('replay').addEventListener('click',()=>{stopExam();run();});
 function examState(set,t,d){const keep=[lesions,test,dir];lesions=set;test=t;dir=d;const st=compute();const txt=shortText(st);[lesions,test,dir]=keep;return{st,txt}}
 function shortText(st){
   if(st.kind==='primary')return primaryLines().map(x=>x.t).join('; ');
@@ -1096,7 +1113,7 @@ function movePulse(p,stop,my){return new Promise(res=>{const c=document.createEl
   const dur=Math.max(160,stop/0.55),t0=performance.now();
   (function f(now){if(runId!==my){c.remove();return res()}const k=Math.min(1,(now-t0)/dur),pt=p.getPointAtLength(stop*k);c.setAttribute('cx',pt.x);c.setAttribute('cy',pt.y);if(k<1)requestAnimationFrame(f);else{c.remove();res()}})(t0)})}
 async function trace(){
-  const my=++runId;clearActive();renderSteps();
+  const my=++runId;clearActive();renderSteps();$('m5replay').hidden=mode==='quiz';$('m5replay').disabled=!sel;
   if(!sel||mode==='quiz'){setFocus(null);return}
   const chain=route(sel.e,sel.fx,sel.fy);setFocus(chain);const instant=reduceMotion();
   await bringIntoView($('m5dia'));if(runId!==my)return;
@@ -1112,6 +1129,7 @@ async function trace(){
 }
 $('m5fields').addEventListener('click',e=>{const t=e.target.closest('.fhit');if(!t)return;const q={e:t.dataset.e,fx:t.dataset.fx,fy:t.dataset.fy};
   sel=(sel&&sel.e===q.e&&sel.fx===q.fx&&sel.fy===q.fy)?null:q;renderFields();trace()});
+$('m5replay').addEventListener('click',()=>trace());
 $('m5fields').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const t=e.target.closest('.fhit');if(t){e.preventDefault();t.dispatchEvent(new MouseEvent('click',{bubbles:true}))}});
 
 // ---------- cases, modes, quiz ----------
