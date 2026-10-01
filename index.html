@@ -178,8 +178,8 @@ button.modcard:hover{border-color:var(--node)}
 .lid{fill:var(--skin)}
 .lidline{fill:none;stroke:var(--skin-edge);stroke-width:2}
 .skin{fill:url(#skinGrad);opacity:.5}
-.globe,.lidg{transition:transform .45s cubic-bezier(.3,.7,.2,1)}
-.target{transition:transform .45s cubic-bezier(.3,.7,.2,1)}
+.globe,.lidg{transition:transform 1.3s cubic-bezier(.3,.7,.2,1)}
+.target{transition:transform 1.3s cubic-bezier(.3,.7,.2,1)}
 .target circle{fill:var(--signal)}
 .tlabel{font-family:var(--f-mono);font-size:10.5px;fill:var(--muted)}
 .eyecap{font-family:var(--f-mono);font-size:10.5px;fill:var(--muted)}
@@ -208,15 +208,14 @@ button.modcard:hover{border-color:var(--node)}
 .quiz-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .btn{font:inherit;font-size:14px;border:1px solid var(--node);background:var(--node);color:var(--panel);padding:8px 14px;border-radius:9px;cursor:pointer;font-weight:700}
 .btn.ghost{background:transparent;color:var(--node)}
+.diagaze{margin-top:10px}
 .diatools{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px;margin-top:10px}
 .replay{font:inherit;font-size:14px;font-weight:700;flex:none;border:1px solid var(--node);background:var(--panel);color:var(--node);padding:6px 12px;border-radius:999px;cursor:pointer;white-space:nowrap}
 .replay:hover:not(:disabled){background:var(--hover)}
 .replay:disabled{opacity:.4;cursor:default}
 .diainfo[open]{flex-basis:100%}
-.replay.speedbtn[aria-pressed="true"],.replay.speedbtn[aria-pressed="true"]:hover{background:var(--node);color:var(--panel)}
-.replay[hidden]~.speedbtn,.replay[hidden]~.pausebtn{display:none}
+.replay[hidden]~.pausebtn{display:none}
 .replay.pausebtn[aria-pressed="true"],.replay.pausebtn[aria-pressed="true"]:hover{background:var(--signal);border-color:var(--signal);color:#fff}
-html.slow .globe,html.slow .lidg,html.slow .target{transition-duration:1.3s}
 .diainfo>summary{display:inline-block;list-style:none;font-size:14px;font-weight:700;color:var(--node);border:1px solid var(--node);border-radius:999px;padding:5px 12px;cursor:pointer}
 .diainfo>summary::-webkit-details-marker{display:none}
 .diainfo[open]>summary{background:var(--hover)}
@@ -432,7 +431,14 @@ img{max-width:100%}
       <g id="marks"></g>
       <g id="pulses"></g>
     </svg>
-    <div class="diatools"><button class="replay" id="replay" type="button" disabled>↻ Replay</button><button class="replay pausebtn" type="button" data-pause aria-pressed="false" disabled>⏸ Pause</button><button class="replay speedbtn" type="button" data-slow aria-pressed="false" aria-label="Slow motion" title="Slow motion">🐢</button>
+    <div class="ctrl-row diagaze">
+      <div class="seg" role="group" aria-label="Gaze direction (next to diagram)">
+        <button data-dir="R" aria-pressed="false">◀ Look RIGHT</button>
+        <button data-dir="C" aria-pressed="false">Primary</button>
+        <button data-dir="L" aria-pressed="true">Look LEFT ▶</button>
+      </div>
+    </div>
+    <div class="diatools"><button class="replay" id="replay" type="button" disabled>↻ Replay</button><button class="replay pausebtn" type="button" data-pause aria-pressed="false" disabled>⏸ Pause</button>
     <details class="diainfo" id="diaInfo"><summary aria-label="Info: how to read this diagram">ⓘ Info</summary>
     <p class="hint" id="diaHint">Pathways not used for the current movement are faded; choose Primary to see them all. Tap any structure (FEF, PPRF, VI nucleus, MLF, CN VI or CN III) to place or remove a lesion.</p>
     <div class="legend">
@@ -553,7 +559,7 @@ img{max-width:100%}
       <g id="m5marks"></g>
       <g id="m5pulses"></g>
     </svg>
-    <div class="diatools"><button class="replay" id="m5replay" type="button" disabled>↻ Replay</button><button class="replay pausebtn" type="button" data-pause aria-pressed="false" disabled>⏸ Pause</button><button class="replay speedbtn" type="button" data-slow aria-pressed="false" aria-label="Slow motion" title="Slow motion">🐢</button>
+    <div class="diatools"><button class="replay" id="m5replay" type="button" disabled>↻ Replay</button><button class="replay pausebtn" type="button" data-pause aria-pressed="false" disabled>⏸ Pause</button>
     <details class="diainfo" id="m5diaInfo"><summary aria-label="Info: how to read this diagram">ⓘ Info</summary>
     <p class="hint" id="m5hint">Viewed from above: the patient's left is on your left. Coral fibres come from the nasal retina and cross at the chiasm; grey fibres come from the temporal retina and stay on the same side. Tap any structure to place or remove a lesion.</p>
     <div class="legend">
@@ -589,10 +595,8 @@ img{max-width:100%}
 </div>
 
 <script>
-// Slow motion for pathway tracing, shared by both modules and remembered on this device
+// Pause/Resume for pathway tracing, shared by both modules
 (function(){
-  const KEY='neurogaze-slow';let on=false;try{on=localStorage.getItem(KEY)==='1'}catch(e){}
-  window.ngSlow=()=>on?3:1;
   // Pausable clock: animations measure time with ngNow(), which stands still while paused
   let paused=false,pausedAt=0,offset=0,busy=false;
   window.ngNow=()=>(paused?pausedAt:performance.now())-offset;
@@ -602,10 +606,6 @@ img{max-width:100%}
   window.ngAnim=b=>{busy=b;syncPause()};
   function syncPause(){document.querySelectorAll('[data-pause]').forEach(b=>{b.disabled=!busy&&!paused;b.setAttribute('aria-pressed',paused);b.textContent=paused?'▶ Resume':'⏸ Pause'})}
   document.addEventListener('click',e=>{if(e.target.closest('[data-pause]'))setPaused(!paused)});
-  function sync(){document.querySelectorAll('[data-slow]').forEach(b=>b.setAttribute('aria-pressed',on));document.documentElement.classList.toggle('slow',on)}
-  document.addEventListener('click',e=>{const b=e.target.closest('[data-slow]');if(!b)return;on=!on;try{localStorage.setItem(KEY,on?'1':'0')}catch(e){}sync();
-    const r=b.parentElement.querySelector('.replay:not([data-slow])');if(r&&!r.disabled&&!r.hidden)r.click()});
-  sync();
 })();
 </script>
 <script>
@@ -809,7 +809,7 @@ function clearActive(){document.querySelectorAll('#dia .active').forEach(el=>el.
 function blockAt(x,y){const c=document.createElementNS(SVGNS,'circle');c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',reduceMotion()?14:4);c.setAttribute('class','block');$('pulses').appendChild(c);}
 function movePulse(p,stop,my){return new Promise(res=>{
   const c=document.createElementNS(SVGNS,'circle');c.setAttribute('r','5.5');c.setAttribute('class','pulse '+(['supra','inter','infra'].find(k=>p.classList.contains(k))||''));$('pulses').appendChild(c);
-  const dur=Math.max(160,stop/0.55)*ngSlow(),t0=ngNow();
+  const dur=Math.max(480,stop/0.18),t0=ngNow();
   function f(now){if(runId!==my){c.remove();return res()}
     const k=Math.min(1,(ngNow()-t0)/dur),pt=p.getPointAtLength(stop*k);c.setAttribute('cx',pt.x);c.setAttribute('cy',pt.y);
     if(k<1)requestAnimationFrame(f);else{c.remove();res()}}
@@ -822,7 +822,7 @@ async function runChain(chain,my){
       await movePulse(p,L,my);if(runId!==my)return;p.classList.add('active');stepState(it,'done');
     }else{const n=$('n_'+it);
       if(isLes(it)){blockAt(+n.dataset.x,+n.dataset.y);stepState(it,'blocked');return}
-      n.classList.add('active');stepState(it,'done');await ngSleep(ngSlow()>1?600:110);}
+      n.classList.add('active');stepState(it,'done');await ngSleep(600);}
   }
 }
 function instantChain(chain){
@@ -908,7 +908,7 @@ function syncButtons(){
   document.querySelectorAll('[data-dir]').forEach(b=>{b.setAttribute('aria-pressed',test!=='near'&&b.dataset.dir===dir);b.disabled=test==='near'});
   // In Doll's head the patient fixates while the head turns, so the buttons name where the eyes go, not where the patient looks
   const w=test==='vor'?'Eyes':'Look';
-  document.querySelector('[data-dir="R"]').textContent=`◀ ${w} RIGHT`;document.querySelector('[data-dir="L"]').textContent=`${w} LEFT ▶`;
+  document.querySelectorAll('[data-dir="R"]').forEach(b=>b.textContent=`◀ ${w} RIGHT`);document.querySelectorAll('[data-dir="L"]').forEach(b=>b.textContent=`${w} LEFT ▶`);
 }
 document.querySelectorAll('[data-test]').forEach(b=>b.addEventListener('click',()=>{stopExam();test=b.dataset.test;if(test!=='near')dir='C';syncButtons();run();}));
 document.querySelectorAll('[data-dir]').forEach(b=>b.addEventListener('click',()=>{stopExam();dir=b.dataset.dir;lastDir=dir;syncButtons();run();}));
@@ -1148,7 +1148,7 @@ function setFocus(chain){document.querySelectorAll('#m5dia .inpath').forEach(e=>
   if(!chain){$('m5dia').classList.remove('focus');return}$('m5dia').classList.add('focus');chain.forEach(it=>{const el=elFor(it);if(el)el.classList.add('inpath')})}
 function blockAt(x,y){const c=document.createElementNS(NS,'circle');c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',reduceMotion()?14:4);c.setAttribute('class','block');$('m5pulses').appendChild(c)}
 function movePulse(p,stop,my){return new Promise(res=>{const c=document.createElementNS(NS,'circle');c.setAttribute('r','5.5');c.setAttribute('class','pulse');$('m5pulses').appendChild(c);
-  const dur=Math.max(160,stop/0.55)*ngSlow(),t0=ngNow();
+  const dur=Math.max(480,stop/0.18),t0=ngNow();
   (function f(now){if(runId!==my){c.remove();return res()}const k=Math.min(1,(ngNow()-t0)/dur),pt=p.getPointAtLength(stop*k);c.setAttribute('cx',pt.x);c.setAttribute('cy',pt.y);if(k<1)requestAnimationFrame(f);else{c.remove();res()}})(t0)})}
 async function trace(){ngResume();ngAnim(true);const my=runId+1;await traceInner();if(runId===my)ngAnim(false)}
 async function traceInner(){
@@ -1163,7 +1163,7 @@ async function traceInner(){
       if(!instant)await movePulse(el,L,my);if(runId!==my)return;el.classList.add('active');stepState(it,'done');
     }else{const blocked=isLes(it)&&!(it.startsWith('OCC'));
       if(isLes(it)){blockAt(+el.dataset.x,+el.dataset.y);stepState(it,'blocked');return}
-      el.classList.add('active');stepState(it,'done');if(!instant)await ngSleep(ngSlow()>1?600:110);}
+      el.classList.add('active');stepState(it,'done');if(!instant)await ngSleep(600);}
   }
 }
 $('m5fields').addEventListener('click',e=>{const t=e.target.closest('.fhit');if(!t)return;const q={e:t.dataset.e,fx:t.dataset.fx,fy:t.dataset.fy};
