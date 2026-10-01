@@ -1,0 +1,1165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NeuroGaze Lab</title>
+<meta name="description" content="Interactive neuro-ophthalmology learning lab: place lesions on the gaze and visual pathways, examine the patient, and trace the signal.">
+<meta name="theme-color" content="#0F6E7A">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="NeuroGaze">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;500&family=Literata:opsz,wght@7..72,500;7..72,650&display=swap" rel="stylesheet">
+<style>
+/* Layout: two linked panels: brainstem schematic (left) drives the patient's eyes (right); stacks on phones */
+:root{
+  --bg:#EDF1F4; --panel:#FFFFFF; --ink:#15212C; --muted:#56687A; --line:#C3CED8; --band:#E3E9EF;
+  --node:#0F6E7A; --muscle:#8C3D5C; --signal:#D97F00; --lesion:#C42B37; --guess:#5E46B0; --ok:#2E7D4F; --lesion-soft:rgba(196,43,55,.07);
+  --hover:rgba(15,110,122,.18);
+  --sclera:#FAFAF6; --iris:#5B3A20; --skin:#C59570; --skin-edge:#8E6446;
+  --tissue:#EDE4DC; --tissue-edge:#C2B3A5; --seen:#E6ECF1; --supra:#2F6DB5; --inter:#2E8A57; --infra:#7A4AA8; --sig-supra:#E3AE00; --sig-inter:#E07B00; --sig-infra:#C4461C; --lost:#26313B; --cross:#C8553D;
+  --f-display:"Literata", Georgia, serif; --f-body:"Atkinson Hyperlegible", system-ui, sans-serif; --f-mono:"IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0E151C; --panel:#16202A; --ink:#E5ECF2; --muted:#93A3B3; --line:#344555; --band:#1C2834;
+  --node:#4DB6C4; --muscle:#D77FA2; --signal:#FFB23E; --lesion:#FF5F69; --guess:#A893F2; --ok:#5CC48A; --lesion-soft:rgba(255,95,105,.12);
+  --hover:rgba(77,182,196,.22); --tissue:#2B2724; --tissue-edge:#55493F; --seen:#3A4A58; --supra:#7BAAE6; --inter:#66C48E; --infra:#B596E6; --sig-supra:#FFD447; --sig-inter:#FFA03A; --sig-infra:#FF6E45; --lost:#06090C; --cross:#EE8466; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0E151C; --panel:#16202A; --ink:#E5ECF2; --muted:#93A3B3; --line:#344555; --band:#1C2834;
+  --node:#4DB6C4; --muscle:#D77FA2; --signal:#FFB23E; --lesion:#FF5F69; --guess:#A893F2; --ok:#5CC48A; --lesion-soft:rgba(255,95,105,.12);
+  --hover:rgba(77,182,196,.22); --tissue:#2B2724; --tissue-edge:#55493F; --seen:#3A4A58; --supra:#7BAAE6; --inter:#66C48E; --infra:#B596E6; --sig-supra:#FFD447; --sig-inter:#FFA03A; --sig-infra:#FF6E45; --lost:#06090C; --cross:#EE8466; color-scheme:dark }
+
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:20px 40px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:18px}
+.eyebrow{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--node);margin:0 0 4px}
+h1{font-family:var(--f-display);font-weight:650;font-size:clamp(1.7rem,3.4vw,2.3rem);line-height:1.1;margin:0;text-wrap:balance}
+.lede{margin:6px 0 0;color:var(--muted);max-width:62ch}
+.seg{display:inline-flex;flex-wrap:wrap;background:var(--band);border-radius:10px;padding:3px;gap:3px}
+.seg button{font:inherit;font-size:14px;border:0;background:transparent;color:var(--ink);padding:7px 12px;border-radius:8px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--panel);box-shadow:0 1px 2px rgba(0,0,0,.12);font-weight:700}
+.seg button:disabled{opacity:.4;cursor:default}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--node);outline-offset:2px}
+
+.lab{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:880px){.lab{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;min-width:0}
+.panel h2{font-family:var(--f-mono);font-size:11.5px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.col{display:grid;gap:18px;min-width:0}
+.hint{font-size:13.5px;color:var(--muted);margin:8px 0 0}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);margin-top:8px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:4px;border-radius:2px;display:inline-block}
+
+/* diagram */
+#dia{width:100%;height:auto;display:block}
+.band{fill:var(--band)}
+.bandlbl{font-family:var(--f-mono);font-size:10px;letter-spacing:.14em;fill:var(--muted)}
+.lbl{font-family:var(--f-mono);font-size:11px;fill:var(--ink)}
+.lbl.sm{font-size:9.5px;fill:var(--muted)}
+.tissue{fill:var(--tissue);stroke:var(--tissue-edge);stroke-width:1.5}
+.sulcus{fill:none;stroke:var(--tissue-edge);stroke-width:1.2}
+.halo{paint-order:stroke;stroke:var(--tissue);stroke-width:3.5px;stroke-linejoin:round}
+.inlbl{font-family:var(--f-mono);font-size:9.5px;font-weight:500;fill:var(--ink);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.tract,.node{transition:opacity .35s}
+svg.focus .tract:not(.inpath),svg.focus .node:not(.inpath){opacity:.13}
+.tract{fill:none;stroke:var(--muted);stroke-opacity:.55;stroke-width:3;stroke-linecap:round;transition:stroke .3s,opacity .35s}
+svg.focus .tract.inpath{stroke-opacity:.9}
+.cmp-wrap{overflow-x:auto;margin-top:12px}
+.cmp{border-collapse:collapse;width:100%;min-width:470px;font-size:13px}
+.cmp th,.cmp td{text-align:left;vertical-align:top;padding:8px;border-top:1px solid var(--line)}
+.cmp thead th{font-family:var(--f-mono);font-size:10.5px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-top:0}
+.cmp tr.diff>*{background:var(--lesion-soft)}
+.cmp .mini{width:84px;height:30px;display:block;margin-bottom:4px}
+.mininys{font-size:11px;fill:var(--lesion);font-weight:700}
+.tag{display:inline-block;margin-top:5px;font-family:var(--f-mono);font-size:10.5px;color:var(--lesion);border:1px solid var(--lesion);border-radius:999px;padding:0 7px}
+.linkbtn{font:inherit;font-weight:700;background:none;border:0;padding:0;color:var(--node);cursor:pointer;text-align:left;text-decoration:underline;text-underline-offset:2px}
+#examStatus{margin:0;font-family:var(--f-mono);font-size:12px;color:var(--node)}
+.pt-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;align-items:center}
+@media (max-width:820px){.pt-grid{grid-template-columns:minmax(0,1fr)}}
+.pt-eyes svg{max-width:560px;margin:0 auto}
+.pt-ctrl{display:grid;gap:12px;min-width:0}
+.pt-ctrl .ctrl-row{align-items:flex-start}
+.pt-ctrl .chips{flex:1;min-width:0}
+.lab{margin-top:18px}
+.routepanel h3{font-family:var(--f-mono);font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.routepanel ol{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.routepanel li{display:grid;grid-template-columns:30px minmax(0,1fr);gap:8px;align-items:start;font-size:14px;color:var(--muted);transition:color .25s}
+.routepanel li .dot{font-family:var(--f-mono);font-size:11px;text-align:center;border:1.5px solid var(--line);border-radius:999px;padding:1px 0;line-height:1.5}
+.routepanel li.done{color:var(--ink)}
+.routepanel li.done .dot{background:var(--signal);border-color:var(--signal);color:var(--panel);font-weight:500}
+.routepanel li.blocked{color:var(--lesion)}
+.routepanel li.blocked .dot{border-color:var(--lesion);color:var(--lesion);font-weight:500}
+.routepanel li em{grid-column:2;font-style:normal;font-family:var(--f-mono);font-size:11.5px}
+.routepanel li.info{color:var(--node);font-style:italic}
+.routepanel li.idle{display:block}
+.tract.nerve{stroke-width:3.5}
+.tract.supra{stroke:var(--supra);stroke-opacity:.75}
+.tract.inter{stroke:var(--inter);stroke-opacity:.75}
+.tract.infra{stroke:var(--infra);stroke-opacity:.75}
+.tract.active,svg.focus .tract.active{stroke:var(--signal);stroke-opacity:1}
+.tract.supra.active,svg.focus .tract.supra.active{stroke:var(--sig-supra)}
+.tract.inter.active,svg.focus .tract.inter.active{stroke:var(--sig-inter)}
+.tract.infra.active,svg.focus .tract.infra.active{stroke:var(--sig-infra)}
+.pulse.supra{fill:var(--sig-supra)}.pulse.inter{fill:var(--sig-inter)}.pulse.infra{fill:var(--sig-infra)}
+.node circle,.node rect{fill:var(--panel);stroke:var(--node);stroke-width:2.5;transition:fill .25s,stroke .25s}
+.node.muscle rect{stroke:var(--muscle)}
+.node text{pointer-events:none}
+.node.muscle .belly{fill:var(--panel);stroke:var(--muscle);stroke-width:2;transition:fill .25s}
+.node.muscle .stri{stroke:var(--muscle);stroke-width:1;stroke-opacity:.6;fill:none}
+.node.muscle .tendon{stroke:var(--muscle);stroke-width:1.5;fill:none}
+.node.muscle.active .belly{fill:var(--muscle)}
+.node.muscle.active .stri{stroke:var(--panel);stroke-opacity:.8}
+
+.node.active circle,.node.active rect{fill:var(--signal);stroke:var(--signal)}
+.lesionable{cursor:pointer}
+.lesionable:hover circle{stroke-width:4.5}
+.hit{fill:none;stroke:transparent;stroke-width:18;stroke-linecap:round;cursor:pointer;pointer-events:stroke}
+.hit:hover,.hit:focus-visible{stroke:var(--hover);outline:none}
+.orbit{fill:none;stroke:var(--line);stroke-dasharray:3 4}
+.globe-mini{fill:var(--band);stroke:var(--line)}
+.pulse{fill:var(--signal)}
+.mark line{stroke:var(--lesion);stroke-width:4;stroke-linecap:round}
+.mark circle{fill:var(--panel);stroke:var(--lesion);stroke-width:2}
+.mark.guess line{stroke:var(--guess)}
+.mark.guess circle{stroke:var(--guess)}
+.block{fill:none;stroke:var(--lesion);stroke-width:2.5;animation:ring .9s ease-out forwards}
+@keyframes ring{from{r:4;opacity:1}to{r:22;opacity:0}}
+
+
+[hidden]{display:none!important}
+.diaexam{position:sticky;top:calc(env(safe-area-inset-top, 0px) + 8px);z-index:2;margin:0 0 8px;padding:7px 12px;border:1.5px solid var(--signal);border-radius:10px;background:var(--panel);font-weight:700;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.diaexam span{font-family:var(--f-mono);font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:6px}
+/* shell */
+.topbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.brand{font:inherit;font-family:var(--f-display);font-weight:650;font-size:1.15rem;background:none;border:0;color:var(--ink);cursor:pointer;padding:0}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tab{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:5px 11px;border-radius:999px;cursor:pointer}
+.tab[aria-current="page"]{border-color:var(--node);background:var(--hover);font-weight:700}
+.tab.soon{color:var(--muted);cursor:default;border-style:dashed;background:transparent}
+.home-hero{padding-block:28px 6px;max-width:64ch}
+.home-title{font-size:clamp(2.6rem,7vw,3.6rem)}
+.modgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:14px;margin-top:24px}
+.modcard{font:inherit;text-align:left;display:flex;flex-direction:column;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;color:var(--ink);cursor:pointer;min-height:180px}
+button.modcard:hover{border-color:var(--node)}
+.modcard.soon{cursor:default;background:transparent;border-style:dashed;color:var(--muted)}
+.modnum{font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--node)}
+.modcard.soon .modnum{color:var(--muted)}
+.modname{font-family:var(--f-display);font-weight:650;font-size:1.2rem;line-height:1.2}
+.moddesc{font-size:14px;color:var(--muted);flex:1}
+.pill{align-self:flex-start;font-family:var(--f-mono);font-size:11px;padding:2px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.pill.ready{border-color:var(--node);color:var(--node)}
+/* module 5 */
+.fseen{fill:var(--seen)}
+.flost{fill:var(--lost)}
+.faxis{stroke:var(--muted);stroke-opacity:.45;stroke-width:.8}
+.fring{fill:none;stroke:var(--muted);stroke-width:1}
+.ffix{fill:var(--lesion)}
+.fsel{fill:var(--signal);fill-opacity:.16;stroke:var(--signal);stroke-width:2.5;pointer-events:none}
+.fhit{fill:transparent;cursor:pointer}
+.fhit:hover,.fhit:focus-visible{fill:var(--hover);outline:none}
+.minif{width:138px;height:70px;display:block}
+.eyeball{fill:var(--sclera);stroke:var(--tissue-edge);stroke-width:1.5}
+.ret-n{fill:none;stroke:var(--cross);stroke-width:4}
+.ret-t{fill:none;stroke:var(--muted);stroke-width:4}
+.tract.cross:not(.active){stroke:var(--cross);stroke-opacity:.8}
+.occ{fill:var(--tissue-edge);opacity:.35}
+/* patient */
+#eyes{width:100%;height:auto;display:block}
+.sclera{fill:url(#sclGrad)}
+.iris{fill:url(#irisGrad)}
+.pupil{fill:#0B0B0B;transition:r .4s}
+.lid{fill:var(--skin)}
+.lidline{fill:none;stroke:var(--skin-edge);stroke-width:2}
+.skin{fill:url(#skinGrad);opacity:.5}
+.globe,.lidg{transition:transform .45s cubic-bezier(.3,.7,.2,1)}
+.target{transition:transform .45s cubic-bezier(.3,.7,.2,1)}
+.target circle{fill:var(--signal)}
+.tlabel{font-family:var(--f-mono);font-size:10.5px;fill:var(--muted)}
+.eyecap{font-family:var(--f-mono);font-size:10.5px;fill:var(--muted)}
+.nyscap{font-family:var(--f-mono);font-size:10.5px;fill:var(--lesion);font-weight:500}
+.nys-pos{animation:nysP .55s infinite}
+.nys-neg{animation:nysN .55s infinite}
+@keyframes nysP{0%{transform:translateX(0)}80%{transform:translateX(-5px)}87%{transform:translateX(0)}100%{transform:translateX(0)}}
+@keyframes nysN{0%{transform:translateX(0)}80%{transform:translateX(5px)}87%{transform:translateX(0)}100%{transform:translateX(0)}}
+.caption{font-size:13px;color:var(--muted);margin:4px 0 12px}
+.controls{display:grid;gap:10px}
+.ctrl-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.ctrl-row .k{font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);min-width:76px}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{font:inherit;font-size:13.5px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:6px 11px;border-radius:999px;cursor:pointer}
+.chips button:hover{border-color:var(--node)}
+.chips button[aria-pressed="true"]{border-color:var(--node);background:var(--hover);font-weight:700}
+
+.dx{font-family:var(--f-display);font-weight:650;font-size:1.25rem;margin:0 0 6px;text-wrap:balance}
+.testline{font-family:var(--f-mono);font-size:12px;color:var(--node);margin:0 0 6px}
+.find{margin:0 0 12px;padding-left:18px}
+.find li{margin:2px 0}
+.find .fail{color:var(--lesion)}
+.note{margin:0;max-width:65ch;color:var(--ink)}
+.note b{font-weight:700}
+.quiz-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.btn{font:inherit;font-size:14px;border:1px solid var(--node);background:var(--node);color:var(--panel);padding:8px 14px;border-radius:9px;cursor:pointer;font-weight:700}
+.btn.ghost{background:transparent;color:var(--node)}
+.btn:disabled{opacity:.45;cursor:default}
+.result{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--band)}
+.result.good{border-left:4px solid var(--ok)}
+.result.bad{border-left:4px solid var(--lesion)}
+footer{margin-top:18px;font-size:12.5px;color:var(--muted)}
+@media (prefers-reduced-motion: reduce){.globe,.lidg,.target{transition:none}.nys-pos,.nys-neg{animation:none}.block{animation:none;opacity:.8}}
+</style>
+<style>
+/* page reset for standalone hosting */
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+  <radialGradient id="irisGrad"><stop offset="0" stop-color="#a5733f"/><stop offset=".42" stop-color="#714727"/><stop offset=".82" stop-color="#4b2c15"/><stop offset="1" stop-color="#24150a"/></radialGradient>
+  <radialGradient id="sclGrad" cx=".5" cy=".42" r=".62"><stop offset="0" stop-color="#fdfcf9"/><stop offset=".68" stop-color="#f3ede5"/><stop offset="1" stop-color="#d6c7b8"/></radialGradient>
+  <linearGradient id="lidShade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a2416" stop-opacity=".42"/><stop offset="1" stop-color="#3a2416" stop-opacity="0"/></linearGradient>
+  <radialGradient id="skinGrad" cx=".5" cy=".45" r=".75"><stop offset="0" stop-color="#d9ad8c"/><stop offset="1" stop-color="#bd8a66"/></radialGradient>
+  <symbol id="irisSym" viewBox="-17 -17 34 34" overflow="visible"><circle r="17" fill="url(#irisGrad)"/><g id="irisFib"></g><circle r="9" fill="none" stroke="#c08a52" stroke-opacity=".6" stroke-width="1.1" stroke-dasharray="1.4 1.1"/><circle r="16.3" fill="none" stroke="#1a0f07" stroke-width="1.8"/></symbol>
+</defs></svg>
+<nav class="topbar" id="topbar" hidden aria-label="Modules">
+  <button class="brand" data-go="home">NeuroGaze</button>
+  <div class="tabs">
+    <button class="tab" data-go="m1">1 · Horizontal gaze</button>
+    <span class="tab soon" aria-disabled="true">2 · Vertical gaze</span>
+    <span class="tab soon" aria-disabled="true">3 · Cranial nerves</span>
+    <span class="tab soon" aria-disabled="true">4 · Pupils</span>
+    <button class="tab" data-go="m5">5 · Visual pathway</button>
+  </div>
+</nav>
+
+<section id="view-home" aria-label="Home">
+  <div class="home-hero">
+    <p class="eyebrow">Neuro-ophthalmology learning lab</p>
+    <h1 class="home-title">NeuroGaze</h1>
+    <p class="lede">Link neuroanatomy to what you see in the patient. Examine the patient, trace the pathway, then test yourself on hidden cases.</p>
+  </div>
+  <div class="modgrid">
+    <button class="modcard" data-go="m1">
+      <span class="modnum">Module 1</span>
+      <span class="modname">Horizontal gaze</span>
+      <span class="moddesc">FEF, PPRF, abducens nucleus and MLF. CN VI palsy, INO, one-and-a-half syndrome.</span>
+      <span class="pill ready">Open</span>
+    </button>
+    <div class="modcard soon">
+      <span class="modnum">Module 2</span>
+      <span class="modname">Vertical gaze</span>
+      <span class="moddesc">riMLF, INC and posterior commissure. Parinaud syndrome.</span>
+      <span class="pill">Coming soon</span>
+    </div>
+    <div class="modcard soon">
+      <span class="modnum">Module 3</span>
+      <span class="modname">Cranial nerves III, IV, VI</span>
+      <span class="moddesc">Nine gaze positions, head tilt, pupil-involving CN III palsy.</span>
+      <span class="pill">Coming soon</span>
+    </div>
+    <div class="modcard soon">
+      <span class="modnum">Module 4</span>
+      <span class="modname">Pupils</span>
+      <span class="moddesc">Light reflex, RAPD, Horner syndrome, Adie and Argyll Robertson pupils.</span>
+      <span class="pill">Coming soon</span>
+    </div>
+    <button class="modcard" data-go="m5">
+      <span class="modnum">Module 5</span>
+      <span class="modname">Visual pathway</span>
+      <span class="moddesc">Optic nerve to occipital cortex. Bitemporal hemianopia, quadrantanopias, macular sparing.</span>
+      <span class="pill ready">Open</span>
+    </button>
+  </div>
+</section>
+
+<section id="view-m1" hidden aria-label="Module 1: horizontal gaze">
+<header>
+  <div>
+    <p class="eyebrow">Neuro-ophthalmology · Module 1</p>
+    <h1>Horizontal gaze: from pathway to patient</h1>
+    <p class="lede">Choose a test and gaze direction, watch the patient's eyes, then trace the signal through the brainstem to see why. Tap any structure on the pathway to place a lesion.</p>
+  </div>
+  <div class="seg" role="group" aria-label="Mode">
+    <button id="mExplore" aria-pressed="true">Explore</button>
+    <button id="mQuiz" aria-pressed="false">Diagnose</button>
+  </div>
+</header>
+
+<section class="panel" aria-label="Patient">
+  <h2>Step 1 · Examine the patient</h2>
+  <div class="pt-grid">
+    <div class="pt-eyes">
+      <svg id="eyes" viewBox="0 0 360 192" role="img" aria-label="The patient's eyes">
+        <g class="target" id="target"><circle cx="180" cy="22" r="6"/><circle cx="180" cy="22" r="11" fill="none" stroke="var(--signal)" stroke-width="1.5"/></g>
+        <text class="tlabel" id="tlabel" x="180" y="44" text-anchor="middle">Target</text>
+        <path class="skin" d="M28,60 Q180,44 332,60 L332,160 Q180,180 28,160 Z"/>
+        <g transform="translate(110,116)"><g id="hostR"></g>
+          <text class="eyecap" y="52" text-anchor="middle">Right eye (OD)</text>
+          <text class="nyscap" id="nyR" y="66" text-anchor="middle"></text>
+        </g>
+        <g transform="translate(250,116)"><g id="hostL"></g>
+          <text class="eyecap" y="52" text-anchor="middle">Left eye (OS)</text>
+          <text class="nyscap" id="nyL" y="66" text-anchor="middle"></text>
+        </g>
+      </svg>
+      <p class="caption">You are facing the patient: their right eye is on your left.</p>
+    </div>
+    <div class="pt-ctrl">
+      <div class="controls">
+        <div class="ctrl-row"><span class="k">Gaze</span>
+          <div class="seg" role="group" aria-label="Gaze direction">
+            <button data-dir="R" aria-pressed="false">◀ Patient's right</button>
+            <button data-dir="C" aria-pressed="false">Primary</button>
+            <button data-dir="L" aria-pressed="true">Patient's left ▶</button>
+          </div>
+        </div>
+        <div class="ctrl-row"><span class="k">Test</span>
+          <div class="seg" role="group" aria-label="Test">
+            <button data-test="sac" aria-pressed="true">Saccade</button>
+            <button data-test="vor" aria-pressed="false">Doll's head (VOR)</button>
+            <button data-test="near" aria-pressed="false">Near</button>
+          </div>
+        </div>
+      </div>
+      <div class="ctrl-row"><span class="k">Exam</span><button class="btn" id="fullExam">▶ Run full exam</button><p id="examStatus" aria-live="polite"></p></div>
+      <div class="ctrl-row" id="casePanel"><span class="k">Case</span><div class="chips" id="chips"></div></div>
+    </div>
+  </div>
+</section>
+
+<div class="lab">
+  <section class="panel" aria-label="Pathway diagram">
+    <h2>Step 2 · Trace the pathway (brainstem viewed from the front)</h2>
+    <p class="diaexam" id="diaExam" aria-live="polite" hidden></p>
+    <svg id="dia" viewBox="0 0 520 630" role="img" aria-label="Schematic of the horizontal gaze pathway from frontal eye fields to the extraocular muscles">
+      <text class="lbl" x="10" y="14" font-weight="500">R</text>
+      <text class="lbl" x="510" y="14" text-anchor="end" font-weight="500">L</text>
+      <g id="anat" aria-hidden="true">
+        <path class="tissue" d="M255,30 C200,14 60,16 24,58 C6,84 28,124 92,130 C150,135 220,128 255,120 Z"/>
+        <path class="tissue" d="M265,30 C320,14 460,16 496,58 C514,84 492,124 428,130 C370,135 300,128 265,120 Z"/>
+        <text class="bandlbl" x="260" y="148" text-anchor="middle">FRONTAL LOBES</text>
+        <path class="tissue" d="M140,160 C150,220 165,270 178,300 C130,315 118,360 122,390 C126,430 160,462 188,472 C196,520 208,570 220,616 L300,616 C312,570 324,520 332,472 C360,462 394,430 398,390 C402,360 390,315 342,300 C355,270 370,220 380,160 C330,172 292,176 260,192 C228,176 190,172 140,160 Z"/>
+        <path class="sulcus" d="M178,300 C220,312 300,312 342,300"/>
+        <path class="sulcus" d="M188,472 C230,482 290,482 332,472"/>
+        <path class="sulcus" d="M260,192 L260,616" stroke-dasharray="2 5"/>
+        <text class="bandlbl" x="392" y="176">MIDBRAIN</text>
+        <text class="bandlbl" x="410" y="342">PONS</text>
+        <text class="bandlbl" x="338" y="590">MEDULLA</text>
+        <text class="lbl sm halo" x="264" y="606">midline</text>
+      </g>
+
+      <text class="lbl sm" x="56" y="208" text-anchor="middle">Right eye</text>
+      <g transform="translate(56,239) scale(.76)" aria-hidden="true" id="hostMR"></g>
+      <text class="lbl sm" x="464" y="208" text-anchor="middle">Left eye</text>
+      <g transform="translate(464,239) scale(.76)" aria-hidden="true" id="hostML"></g>
+
+      <g id="tracts">
+        <path class="tract supra" id="p_fefR_pprfL" d="M150,77 C150,300 340,320 330,380 C326,410 318,430 313,439"/>
+        <path class="tract supra" id="p_fefL_pprfR" d="M370,77 C370,300 180,320 190,380 C194,410 202,430 207,439"/>
+        <path class="tract supra" id="p_pprfL_viL" d="M308,440 L299,416"/>
+        <path class="tract supra" id="p_pprfR_viR" d="M212,440 L221,416"/>
+        <path class="tract supra" id="p_vnR_viL" d="M230,532 C240,500 285,470 295,416"/>
+        <path class="tract supra" id="p_vnL_viR" d="M290,532 C280,500 235,470 225,416"/>
+        <path class="tract inter" id="p_viL_mlfR" d="M287,400 Q260,388 240,382"/>
+        <path class="tract inter" id="p_viR_mlfL" d="M233,400 Q260,388 280,382"/>
+        <path class="tract inter" id="p_mlfR" d="M240,382 L240,258 L232,245"/>
+        <path class="tract inter" id="p_mlfL" d="M280,382 L280,258 L288,245"/>
+        <path class="tract supra" id="p_verg3R" d="M253,210 L233,228"/>
+        <path class="tract supra" id="p_verg3L" d="M267,210 L287,228"/>
+        <path class="tract nerve infra" id="p_cn3R" d="M216,236 C180,228 140,240 108,239"/>
+        <path class="tract nerve infra" id="p_cn3L" d="M304,236 C340,228 380,240 412,239"/>
+        <path class="tract nerve infra" id="p_cnviR" d="M217,410 C170,440 120,500 70,500 C12,495 9,380 9,257"/>
+        <path class="tract nerve infra" id="p_cnviL" d="M303,410 C350,440 400,500 450,500 C508,495 511,380 511,257"/>
+      </g>
+      <text class="lbl sm halo" x="260" y="340" text-anchor="middle">MLF</text>
+      <text class="lbl sm" x="88" y="516" text-anchor="middle">CN VI</text>
+      <text class="lbl sm" x="432" y="516" text-anchor="middle">CN VI</text>
+      <text class="lbl sm" x="150" y="226" text-anchor="middle">CN III</text>
+      <text class="lbl sm" x="370" y="226" text-anchor="middle">CN III</text>
+      <g id="hits"></g>
+
+      <g id="nodes">
+        <g class="node lesionable" id="n_FEF_R" data-les="FEF_R" data-x="150" data-y="66"><circle cx="150" cy="66" r="11"/><text class="lbl halo" x="150" y="98" text-anchor="middle">FEF</text></g>
+        <g class="node lesionable" id="n_FEF_L" data-les="FEF_L" data-x="370" data-y="66"><circle cx="370" cy="66" r="11"/><text class="lbl halo" x="370" y="98" text-anchor="middle">FEF</text></g>
+        <g class="node" id="n_VERG" data-x="260" data-y="203"><circle cx="260" cy="203" r="7"/><text class="lbl sm halo" x="272" y="200">near cells</text></g>
+        <g class="node" id="n_III_R" data-x="225" data-y="236"><circle cx="225" cy="236" r="11"/><text class="inlbl" x="225" y="236">III</text></g>
+        <g class="node" id="n_III_L" data-x="295" data-y="236"><circle cx="295" cy="236" r="11"/><text class="inlbl" x="295" y="236">III</text></g>
+        <g class="node lesionable" id="n_VI_R" data-les="VI_R" data-x="225" data-y="405"><circle cx="225" cy="405" r="11"/><text class="inlbl" x="225" y="405">VI</text></g>
+        <g class="node lesionable" id="n_VI_L" data-les="VI_L" data-x="295" data-y="405"><circle cx="295" cy="405" r="11"/><text class="inlbl" x="295" y="405">VI</text></g>
+        <g class="node lesionable" id="n_PPRF_R" data-les="PPRF_R" data-x="210" data-y="450"><circle cx="210" cy="450" r="11"/><text class="lbl halo" x="210" y="477" text-anchor="middle">PPRF</text></g>
+        <g class="node lesionable" id="n_PPRF_L" data-les="PPRF_L" data-x="310" data-y="450"><circle cx="310" cy="450" r="11"/><text class="lbl halo" x="310" y="477" text-anchor="middle">PPRF</text></g>
+        <g class="node" id="n_VN_R" data-x="230" data-y="540"><circle cx="230" cy="540" r="9"/></g>
+        <g class="node" id="n_VN_L" data-x="290" data-y="540"><circle cx="290" cy="540" r="9"/></g>
+        <text class="lbl sm halo" x="260" y="568" text-anchor="middle">vestibular nuclei</text>
+        <g class="node muscle" id="n_LR_R"><path class="tendon" d="M9,211 L9,218 M9,260 L9,267"/><path class="belly" d="M9,216 C18,225 18,253 9,262 C0,253 0,225 9,216 Z"/><path class="stri" d="M4,230 L14,230 M3,239 L15,239 M4,248 L14,248"/><text class="lbl sm" x="9" y="280" text-anchor="middle">LR</text></g>
+        <g class="node muscle" id="n_MR_R"><path class="tendon" d="M103,211 L103,218 M103,260 L103,267"/><path class="belly" d="M103,216 C112,225 112,253 103,262 C94,253 94,225 103,216 Z"/><path class="stri" d="M98,230 L108,230 M97,239 L109,239 M98,248 L108,248"/><text class="lbl sm" x="103" y="280" text-anchor="middle">MR</text></g>
+        <g class="node muscle" id="n_MR_L"><path class="tendon" d="M417,211 L417,218 M417,260 L417,267"/><path class="belly" d="M417,216 C426,225 426,253 417,262 C408,253 408,225 417,216 Z"/><path class="stri" d="M412,230 L422,230 M411,239 L423,239 M412,248 L422,248"/><text class="lbl sm" x="417" y="280" text-anchor="middle">MR</text></g>
+        <g class="node muscle" id="n_LR_L"><path class="tendon" d="M511,211 L511,218 M511,260 L511,267"/><path class="belly" d="M511,216 C520,225 520,253 511,262 C502,253 502,225 511,216 Z"/><path class="stri" d="M506,230 L516,230 M505,239 L517,239 M506,248 L516,248"/><text class="lbl sm" x="511" y="280" text-anchor="middle">LR</text></g>
+      </g>
+      <g id="marks"></g>
+      <g id="pulses"></g>
+    </svg>
+    <p class="hint" id="diaHint">Pathways not used for the current movement are faded; choose Primary to see them all. Tap any structure (FEF, PPRF, VI nucleus, MLF, CN VI or CN III) to place or remove a lesion.</p>
+    <div class="legend">
+      <span id="lgSignal"><i class="sw" style="background:var(--sig-supra)"></i><i class="sw" style="background:var(--sig-inter);margin-left:-4px"></i><i class="sw" style="background:var(--sig-infra);margin-left:-4px"></i>Active signal (supra · inter · infranuclear)</span>
+      <span><i class="sw" style="background:var(--lesion)"></i>Lesion</span>
+      <span><i class="sw" style="background:var(--muscle)"></i>Contracting muscle</span>
+      <span id="lgGuess" hidden><i class="sw" style="background:var(--guess)"></i>Your answer</span>
+    </div>
+    <div class="legend" aria-label="Pathway types">
+      <span><i class="sw" style="background:var(--supra)"></i>Supranuclear (FEF, PPRF, vestibular, near inputs)</span>
+      <span><i class="sw" style="background:var(--inter)"></i>Internuclear (MLF)</span>
+      <span><i class="sw" style="background:var(--infra)"></i>Infranuclear (CN III, CN VI)</span>
+    </div>
+  </section>
+
+  <div class="col">
+    <section class="panel routepanel" id="trace" aria-label="Signal route"><h2>Signal route</h2><ol id="steps" class="steps"></ol></section>
+    <section class="panel" id="findPanel" aria-live="polite">
+      <h2 id="findHead">Findings</h2>
+      <p class="dx" id="dx"></p>
+      <p class="testline" id="testline"></p>
+      <ul class="find" id="find"></ul>
+      <p class="note" id="note"></p>
+      <div id="quizBox" hidden>
+        <p class="note" id="quizInstr">Examine the patient: tap <b>Run full exam</b>, or test each gaze direction yourself. Then tap the structure(s) on the pathway where you think the lesion is, and check your answer.</p>
+        <p class="hint" id="guessList">Your answer: none selected</p>
+        <div class="quiz-actions">
+          <button class="btn" id="check" disabled>Check answer</button>
+          <button class="btn ghost" id="newCase">New case</button>
+        </div>
+        <div id="result" class="result" hidden></div>
+      </div>
+    </section>
+  </div>
+</div>
+</section>
+<section id="view-m5" hidden aria-label="Module 5: visual pathway">
+<header>
+  <div>
+    <p class="eyebrow">Neuro-ophthalmology · Module 5</p>
+    <h1>Visual pathway: from field defect to lesion</h1>
+    <p class="lede">Read the visual fields and pupils, then tap a quadrant of either field to trace its fibres from the retina to the occipital cortex. Tap any structure on the pathway to place a lesion.</p>
+  </div>
+  <div class="seg" role="group" aria-label="Mode">
+    <button id="m5Explore" aria-pressed="true">Explore</button>
+    <button id="m5Quiz" aria-pressed="false">Diagnose</button>
+  </div>
+</header>
+
+<section class="panel" aria-label="Patient">
+  <h2>Step 1 · Examine the patient</h2>
+  <div class="pt-grid">
+    <div class="pt-eyes">
+      <svg id="m5fields" viewBox="0 0 360 196" role="img" aria-label="Visual field plots for the left and right eye"></svg>
+      <p class="caption" id="m5fieldCap">Visual fields (30°), plotted as the patient sees them. Dark = not seen. Tap a quadrant to trace its fibres.</p>
+    </div>
+    <div class="pt-ctrl">
+      <div>
+        <p class="k" style="margin:0 0 6px">Pupils · swinging flashlight</p>
+        <svg id="m5pupils" viewBox="0 0 330 112" role="img" aria-label="Pupil responses to the swinging flashlight test"></svg>
+        <p class="hint" id="m5pupilText" style="margin:2px 0 0"></p>
+      </div>
+      <div class="ctrl-row" id="m5casePanel"><span class="k">Case</span><div class="chips" id="m5chips"></div></div>
+    </div>
+  </div>
+</section>
+
+<div class="lab">
+  <section class="panel" aria-label="Visual pathway diagram">
+    <h2>Step 2 · Trace the pathway (viewed from above)</h2>
+    <svg id="m5dia" viewBox="0 0 520 610" role="img" aria-label="Visual pathway from the eyes to the occipital cortex, viewed from above">
+      <g aria-hidden="true">
+        <path class="tissue" d="M260,128 C385,128 472,192 472,330 C472,472 400,598 260,598 C120,598 48,472 48,330 C48,192 135,128 260,128 Z"/>
+        <path class="occ" d="M178,526 C200,590 240,596 256,596 L256,532 C230,520 200,516 178,526 Z"/>
+        <path class="occ" d="M342,526 C320,590 280,596 264,596 L264,532 C290,520 320,516 342,526 Z"/>
+        <path class="sulcus" d="M260,128 L260,598" stroke-dasharray="2 5"/>
+        <text class="lbl" x="18" y="22" font-weight="500">L</text>
+        <text class="lbl" x="502" y="22" text-anchor="end" font-weight="500">R</text>
+        <g transform="translate(150,64)"><circle class="eyeball" r="34"/><path class="ret-t" d="M-34,0 A34,34 0 0 0 0,34"/><path class="ret-n" d="M0,34 A34,34 0 0 0 34,0"/><text class="lbl sm" y="-42" text-anchor="middle">left eye</text></g>
+        <g transform="translate(370,64)"><circle class="eyeball" r="34"/><path class="ret-n" d="M-34,0 A34,34 0 0 0 0,34"/><path class="ret-t" d="M0,34 A34,34 0 0 0 34,0"/><text class="lbl sm" y="-42" text-anchor="middle">right eye</text></g>
+        <text class="lbl sm halo" x="196" y="128" text-anchor="end">optic nerve</text>
+        <text class="lbl sm halo" x="324" y="128">optic nerve</text>
+        <text class="lbl sm halo" x="214" y="262" text-anchor="end">optic tract</text>
+        <text class="lbl sm halo" x="306" y="262">optic tract</text>
+        <text class="lbl sm halo" x="160" y="312" text-anchor="end">LGN</text>
+        <text class="lbl sm halo" x="360" y="312">LGN</text>
+        <text class="lbl sm halo" x="70" y="400">Meyer's loop</text>
+        <text class="lbl sm halo" x="70" y="413">(temporal lobe)</text>
+        <text class="lbl sm halo" x="450" y="400" text-anchor="end">Meyer's loop</text>
+        <text class="lbl sm halo" x="450" y="413" text-anchor="end">(temporal lobe)</text>
+        <text class="lbl sm halo" x="206" y="430" text-anchor="end">parietal</text>
+        <text class="lbl sm halo" x="314" y="430">parietal</text>
+        <text class="lbl sm halo" x="260" y="518" text-anchor="middle">occipital cortex</text>
+      </g>
+      <g id="m5tracts">
+        <path class="tract" id="q_on_L" d="M150,98 L232,186"/>
+        <path class="tract" id="q_on_R" d="M370,98 L288,186"/>
+        <path class="tract" id="q_unc_L" d="M232,186 C236,192 238,202 238,214"/>
+        <path class="tract" id="q_unc_R" d="M288,186 C284,192 282,202 282,214"/>
+        <path class="tract cross" id="q_cross_L" d="M232,186 C250,198 270,202 282,214"/>
+        <path class="tract cross" id="q_cross_R" d="M288,186 C270,198 250,202 238,214"/>
+        <path class="tract" id="q_tract_L" d="M238,214 C228,250 205,285 189,301"/>
+        <path class="tract" id="q_tract_R" d="M282,214 C292,250 315,285 331,301"/>
+        <path class="tract" id="q_mey_L" d="M175,313 C110,330 92,410 150,468 C178,496 205,522 226,540"/>
+        <path class="tract" id="q_par_L" d="M186,317 C192,380 205,462 230,538"/>
+        <path class="tract" id="q_mey_R" d="M345,313 C410,330 428,410 370,468 C342,496 315,522 294,540"/>
+        <path class="tract" id="q_par_R" d="M334,317 C328,380 315,462 290,538"/>
+      </g>
+      <g id="m5hits"></g>
+      <g id="m5nodes">
+        <g class="node lesionable" id="v_CHI" data-les="CHI" data-x="260" data-y="200"><circle cx="260" cy="200" r="11"/><text class="lbl sm halo" x="276" y="184">chiasm</text></g>
+        <g class="node" id="v_LGN_L" data-x="182" data-y="308"><circle cx="182" cy="308" r="9"/></g>
+        <g class="node" id="v_LGN_R" data-x="338" data-y="308"><circle cx="338" cy="308" r="9"/></g>
+        <g class="node lesionable" id="v_OCC_L" data-les="OCC_L" data-x="232" data-y="556"><circle cx="232" cy="556" r="11"/></g>
+        <g class="node lesionable" id="v_OCC_R" data-les="OCC_R" data-x="288" data-y="556"><circle cx="288" cy="556" r="11"/></g>
+      </g>
+      <g id="m5marks"></g>
+      <g id="m5pulses"></g>
+    </svg>
+    <p class="hint" id="m5hint">Viewed from above: the patient's left is on your left. Coral fibres come from the nasal retina and cross at the chiasm; grey fibres come from the temporal retina and stay on the same side. Tap any structure to place or remove a lesion.</p>
+    <div class="legend">
+      <span id="m5lgSignal"><i class="sw" style="background:var(--signal)"></i>Traced signal</span>
+      <span><i class="sw" style="background:var(--lesion)"></i>Lesion</span>
+      <span id="m5lgGuess" hidden><i class="sw" style="background:var(--guess)"></i>Your answer</span>
+    </div>
+  </section>
+
+  <div class="col">
+    <section class="panel routepanel" id="m5trace" aria-label="Signal route"><h2>Signal route</h2><ol id="m5steps"></ol></section>
+    <section class="panel" id="m5find" aria-live="polite">
+      <h2>Findings</h2>
+      <p class="dx" id="m5dx"></p>
+      <ul class="find" id="m5list"></ul>
+      <p class="note" id="m5note"></p>
+      <div id="m5quizBox" hidden>
+        <p class="note">Read both visual fields and the pupils. Then tap the structure(s) on the pathway where you think the lesion is, and check your answer.</p>
+        <p class="hint" id="m5guessList">Your answer: none selected</p>
+        <div class="quiz-actions">
+          <button class="btn" id="m5check" disabled>Check answer</button>
+          <button class="btn ghost" id="m5newCase">New case</button>
+        </div>
+        <div id="m5result" class="result" hidden></div>
+      </div>
+    </section>
+  </div>
+</div>
+</section>
+
+<footer>Prototype for undergraduate teaching. Schematic, not to anatomical scale.</footer>
+</div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const EYEIDS={};
+function lidParts(m,c){
+  let lashes='';
+  for(let i=0;i<15;i++){const t=.1+i*.057,x=50*(2*t-1),y=2*c*(1-t)*t;
+    const tx=100,ty=2*c*(1-2*t),len=Math.hypot(tx,ty),nx=ty/len,ny=-tx/len;
+    const lat=Math.max(0,(-m*x)/50),Ln=5+5*lat+(i%2)*1.2,ox=-m*Ln*(.25+.45*lat);
+    const ex=x+nx*Ln+ox,ey=y+ny*Ln;
+    lashes+=`<path d="M${x.toFixed(1)},${y.toFixed(1)} Q${(x+nx*Ln*.6).toFixed(1)},${(y+ny*Ln*.6).toFixed(1)} ${ex.toFixed(1)},${ey.toFixed(1)}" fill="none" stroke="#24150b" stroke-width="1.1" stroke-linecap="round"/>`}
+  return{lid:`<path d="M-56,-90 L56,-90 L56,-2 Q0,${c-2} -56,-2 Z" class="lid"/><path d="M-56,-2 Q0,${c-2} 56,-2 L56,10 Q0,${c+10} -56,10 Z" fill="url(#lidShade)"/>`,
+    lash:`<path d="M-50,0 Q0,${c} 50,0" fill="none" stroke="#3a2416" stroke-width="2.3" stroke-linecap="round"/>${lashes}`};
+}
+function simpleLid(c){return{lid:`<path d="M-56,-90 L56,-90 L56,-2 Q0,${c-2} -56,-2 Z" fill="#fff"/>`,lash:`<path d="M-50,0 Q0,${c} 50,0" fill="none" stroke="var(--ink)" stroke-width="2"/>`}}
+function setLid(key,pt){const d=EYEIDS[key];if(!d||d.pt===pt)return;d.pt=pt;const parts=d.simple?simpleLid(pt?6:-36):lidParts(d.m,pt?6:-36);
+  document.getElementById(d.l).innerHTML=parts.lid;document.getElementById(d.lash).innerHTML=parts.lash;}
+(function buildEyes(){
+  const fib=document.getElementById('irisFib');
+  if(fib&&!fib.childNodes.length){let h='';for(let i=0;i<72;i++){const a=i*5*Math.PI/180,r0=6.5+(i%3)*.8,r1=i%2?15.6:13.2;
+    h+=`<line x1="${(r0*Math.cos(a)).toFixed(2)}" y1="${(r0*Math.sin(a)).toFixed(2)}" x2="${(r1*Math.cos(a+.04)).toFixed(2)}" y2="${(r1*Math.sin(a+.04)).toFixed(2)}" stroke="${i%4===0?'#d4a066':'#2a170a'}" stroke-opacity="${i%4===0?.45:.32}" stroke-width="${i%4===0?.5:.6}"/>`}
+    fib.innerHTML=h}
+  function eye(side,ids){
+    const m=side==='R'?1:-1,A='M-50,0 Q0,-36 50,0 Q0,36 -50,0Z',cid='clip'+ids.g,parts=lidParts(m,-36);
+    const B=(x,y)=>`${(x*m).toFixed(1)},${y}`;
+    return `<path d="M${B(44,-37)} C${B(46,-42)} ${B(46,-46)} ${B(42,-49)} C${B(26,-57)} ${B(0,-58)} ${B(-20,-55)} C${B(-36,-52)} ${B(-48,-47)} ${B(-56,-41)} C${B(-44,-44)} ${B(-32,-47)} ${B(-18,-48)} C${B(4,-50)} ${B(26,-46)} ${B(44,-37)} Z" fill="#3a2518" opacity=".88"/>
+      <path d="M-46,-9 Q0,-42 46,-9" fill="none" stroke="#8e6446" stroke-opacity=".55" stroke-width="1.5"/>
+      <clipPath id="${cid}"><path d="${A}"/></clipPath>
+      <path d="${A}" class="sclera"/>
+      <g clip-path="url(#${cid})">
+        <ellipse cx="${46*m}" cy="1" rx="7" ry="5" fill="#d18c82" opacity=".85"/>
+        <g class="globe" id="${ids.g}"><g id="${ids.n}"><use href="#irisSym" x="-17" y="-17" width="34" height="34"/><circle class="pupil" id="${ids.p}" r="6.5"/><circle cx="-5.5" cy="-6" r="2.8" fill="#fff" opacity=".85"/><circle cx="4.5" cy="5" r="1.3" fill="#fff" opacity=".45"/></g></g>
+        <g id="${ids.l}">${parts.lid}</g>
+      </g>
+      <g id="${ids.lash}">${parts.lash}</g>
+      <path d="M-50,0 Q0,36 50,0" fill="none" stroke="#8e6446" stroke-width="1.3"/>`;
+  }
+  function simpleEye(ids){
+    const A='M-50,0 Q0,-36 50,0 Q0,36 -50,0Z',cid='clip'+ids.g,parts=simpleLid(-36);
+    return `<path d="${A}" fill="#fff"/>
+      <clipPath id="${cid}"><path d="${A}"/></clipPath>
+      <g clip-path="url(#${cid})">
+        <g class="globe" id="${ids.g}"><g id="${ids.n}"><circle r="17" fill="#8b5a2b" stroke="var(--ink)" stroke-width="1.3"/><circle id="${ids.p}" r="6.5" fill="#111"/></g></g>
+        <g id="${ids.l}">${parts.lid}</g>
+      </g>
+      <path d="${A}" fill="none" stroke="var(--ink)" stroke-width="2"/>
+      <g id="${ids.lash}">${parts.lash}</g>`;
+  }
+  [['R','hostR',''],['L','hostL',''],['R','hostMR','m'],['L','hostML','m']].forEach(([sd,host,pre])=>{const h=document.getElementById(host);if(!h)return;
+    const ids={g:pre+'g'+sd,n:pre+'n'+sd,p:pre+'p'+sd,l:pre+'l'+sd,lash:pre+'lash'+sd},simple=pre==='m';
+    h.innerHTML=simple?simpleEye(ids):eye(sd,ids);EYEIDS[pre+sd]={m:sd==='R'?1:-1,l:ids.l,lash:ids.lash,pt:false,simple}});
+})();
+const LES={
+  FEF_R:{label:'right FEF'},FEF_L:{label:'left FEF'},
+  PPRF_R:{label:'right PPRF'},PPRF_L:{label:'left PPRF'},
+  VI_R:{label:'right abducens nucleus'},VI_L:{label:'left abducens nucleus'},
+  CNVI_R:{label:'right abducens nerve',path:'p_cnviR'},CNVI_L:{label:'left abducens nerve',path:'p_cnviL'},
+  MLF_R:{label:'right MLF',path:'p_mlfR'},MLF_L:{label:'left MLF',path:'p_mlfL'},
+  CNIII_R:{label:'right oculomotor nerve',path:'p_cn3R'},CNIII_L:{label:'left oculomotor nerve',path:'p_cn3L'}
+};
+const pathToLes={};Object.entries(LES).forEach(([k,v])=>{if(v.path)pathToLes[v.path]=k});
+
+const PRESETS={
+  normal:{name:'Normal',les:[],note:"<b>Saccade to the patient's left:</b> the right FEF projects to the opposite (left) PPRF, which drives the left abducens nucleus. Its motor neurons fire the left lateral rectus. Its interneurons cross the midline and ascend in the right MLF to the medial rectus subnucleus of CN III, so the right eye adducts at the same time (Hering's law). Try Doll's head: the signal now starts in the vestibular nuclei and enters the abducens nucleus directly, bypassing FEF and PPRF."},
+  cn6L:{name:'Left CN VI palsy',les:['CNVI_L'],note:"Only the left lateral rectus is weak. The left eye is turned in (esotropia) and cannot abduct on left gaze. The right eye still adducts normally because the abducens <b>nucleus</b> and its interneurons are intact. Common causes: microvascular ischaemia, raised intracranial pressure (a false-localising sign), trauma."},
+  viNucL:{name:'Left abducens nucleus lesion',les:['VI_L'],note:"A nuclear lesion gives a <b>horizontal gaze palsy</b> to the same side, not an isolated abduction deficit, because the nucleus holds the interneurons to the opposite medial rectus. Saccades and the VOR are both lost. The facial nerve loops around this nucleus (facial colliculus), so an ipsilateral lower motor neuron facial palsy often coexists."},
+  pprfL:{name:'Left PPRF lesion',les:['PPRF_L'],note:"Loss of the left PPRF abolishes horizontal <b>saccades</b> to the left. Vestibular input reaches the abducens nucleus directly, so doll's head (VOR) movements to the left can still be full. Compare with the abducens nucleus lesion, where the VOR is also lost."},
+  fefR:{name:'Right FEF lesion (acute)',les:['FEF_R'],note:"An acute destructive frontal lesion makes the eyes deviate <b>toward</b> the side of the lesion, and voluntary saccades to the opposite side fail. Doll's head movements are full because the brainstem pathway is intact: this proves the palsy is <b>supranuclear</b>. An irritative focus (seizure) does the opposite and drives the eyes away from the lesion."},
+  inoR:{name:'Right internuclear ophthalmoplegia',les:['MLF_R'],note:"INO is named by the side of the <b>adduction deficit</b>, which is the side of the MLF lesion. On left gaze the right eye fails to adduct and the abducting left eye shows nystagmus. <b>Convergence is spared</b>, because near input reaches the medial rectus subnucleus without using the MLF; this separates INO from a CN III palsy. Young and bilateral: think multiple sclerosis. Older and unilateral: think brainstem stroke."},
+  inoBil:{name:'Bilateral INO',les:['MLF_R','MLF_L'],note:"Both MLFs are damaged, so adduction fails on gaze to either side, with abducting nystagmus each way. Convergence is preserved. Multiple sclerosis is the classic cause in a young adult."},
+  ohL:{name:'Left one-and-a-half syndrome',les:['VI_L','MLF_L'],note:"Left abducens nucleus (or PPRF) plus the left MLF. The <b>'one'</b> is a left horizontal gaze palsy; the <b>'half'</b> is a left INO. The only horizontal movement left is abduction of the right eye, with nystagmus. Try each direction to confirm."},
+  cn3L:{name:'Left CN III palsy',les:['CNIII_L'],note:"The left eye rests <b>down and out</b> (unopposed lateral rectus and superior oblique), with ptosis and, if compressive, a dilated pupil. A pupil-involving CN III palsy needs urgent imaging for a posterior communicating artery aneurysm. Adduction fails on right gaze <b>and on convergence</b>, unlike INO. This model draws only the medial rectus branch; CN III also supplies SR, IR, IO and levator."}
+};
+
+let lesions=new Set(), test='sac', dir='C', lastDir='C', mode='explore';
+let quiz={answer:null,guesses:new Set(),checked:false,n:0};
+const reduceMotion=()=>window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// hit areas for nerve/tract lesions
+const hits=$('hits');
+Object.entries(LES).forEach(([k,v])=>{if(!v.path)return;
+  const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+  p.setAttribute('d',$(v.path).getAttribute('d'));p.setAttribute('class','hit');p.dataset.les=k;
+  p.setAttribute('tabindex','0');p.setAttribute('role','button');p.setAttribute('aria-label','Toggle lesion: '+v.label);hits.appendChild(p);});
+document.querySelectorAll('#dia .lesionable').forEach(g=>{g.setAttribute('tabindex','0');g.setAttribute('role','button');g.setAttribute('aria-label','Toggle lesion: '+LES[g.dataset.les].label)});
+function onLesionClick(k){
+  if(mode==='quiz'){ if(quiz.checked)return; quiz.guesses.has(k)?quiz.guesses.delete(k):quiz.guesses.add(k); renderMarks(); renderQuiz(); return; }
+  lesions.has(k)?lesions.delete(k):lesions.add(k); renderChips(); renderMarks(); run();
+}
+$('dia').addEventListener('click',e=>{const t=e.target.closest('[data-les]');if(t)onLesionClick(t.dataset.les)});
+$('dia').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const t=e.target.closest('[data-les]');if(t){e.preventDefault();onLesionClick(t.dataset.les)}});
+
+function lesPoint(k){const v=LES[k];
+  if(v.path){const p=$(v.path),L=p.getTotalLength(),pt=p.getPointAtLength(L/2);return[pt.x,pt.y]}
+  const g=$('n_'+k);return[+g.dataset.x,+g.dataset.y];}
+function mark(k,cls){const[x,y]=lesPoint(k),s='http://www.w3.org/2000/svg';
+  const g=document.createElementNS(s,'g');g.setAttribute('class','mark '+cls);g.setAttribute('pointer-events','none');
+  g.innerHTML=`<circle cx="${x}" cy="${y}" r="10"/><line x1="${x-6}" y1="${y-6}" x2="${x+6}" y2="${y+6}"/><line x1="${x+6}" y1="${y-6}" x2="${x-6}" y2="${y+6}"/>`;
+  $('marks').appendChild(g);}
+function renderMarks(){$('marks').innerHTML='';
+  if(mode!=='quiz'||quiz.checked)lesions.forEach(k=>mark(k,'lesion'));
+  if(mode==='quiz')quiz.guesses.forEach(k=>{if(!(quiz.checked&&lesions.has(k)))mark(k,'guess')});}
+
+// ---------- engine ----------
+const other=s=>s==='L'?'R':'L';
+function chainsFor(t,d){
+  if(t==='near')return{R:['VERG','p_verg3R','III_R','p_cn3R','MR_R'],L:['VERG','p_verg3L','III_L','p_cn3L','MR_L']};
+  const s=d,o=other(d);
+  const start=t==='sac'?['FEF_'+o,`p_fef${o}_pprf${s}`,'PPRF_'+s,`p_pprf${s}_vi${s}`]:['VN_'+o,`p_vn${o}_vi${s}`];
+  const c={};c[s]=[...start,'VI_'+s,'p_cnvi'+s,'LR_'+s];c[o]=[...start,'VI_'+s,`p_vi${s}_mlf${o}`,'p_mlf'+o,'III_'+o,'p_cn3'+o,'MR_'+o];return c;
+}
+const lesKey=item=>LES[item]?item:pathToLes[item];
+const isLes=item=>{const k=lesKey(item);return !!k&&lesions.has(k)};
+function baseEye(e){
+  let x=0,y=0,pt=false,my=false;
+  if(lesions.has('FEF_R')&&!lesions.has('FEF_L'))x=-0.5;
+  if(lesions.has('FEF_L')&&!lesions.has('FEF_R'))x=0.5;
+  const add=e==='R'?1:-1; // direction (patient frame, + = patient's left) that adducts this eye
+  if(lesions.has('CNVI_'+e))x+=0.3*add;
+  if(lesions.has('CNIII_'+e)){x=-0.5*add;y=0.35;pt=true;my=true}
+  return{x,y,pt,my};
+}
+function compute(){
+  const st={R:baseEye('R'),L:baseEye('L'),kind:'primary'};
+  ['R','L'].forEach(e=>{st[e].nys=false;st[e].ok=true;st[e].reason=null});
+  if(test==='near'){
+    st.kind='near';const ch=chainsFor('near');
+    ['R','L'].forEach(e=>{const add=e==='R'?1:-1;const bad=lesions.has('CNIII_'+e);
+      st[e].verb='adduct';st[e].ok=!bad;if(!bad){st[e].x=0.55*add;st[e].y=lesions.has('CNIII_'+e)?st[e].y:0}else st[e].reason=LES['CNIII_'+e].label;});
+    st.chains=ch;return st;
+  }
+  if(dir==='C'){st.chains=null;return st}
+  st.kind='gaze';const s=dir,o=other(dir),sign=dir==='L'?1:-1,ch=chainsFor(test,dir);
+  const drive=test==='sac'?!lesions.has('FEF_'+o)&&!lesions.has('PPRF_'+s):true;
+  const nuc=drive&&!lesions.has('VI_'+s);
+  const abdOk=nuc&&!lesions.has('CNVI_'+s);
+  const addOk=nuc&&!lesions.has('MLF_'+o)&&!lesions.has('CNIII_'+o);
+  st[s].verb='abduct';st[o].verb='adduct';
+  st[s].ok=abdOk;st[o].ok=addOk;
+  if(abdOk)st[s].x=sign;
+  if(addOk)st[o].x=sign;else if(nuc&&lesions.has('MLF_'+o))st[o].x=st[o].x+sign*0.12;
+  st[s].nys=abdOk&&lesions.has('MLF_'+o);
+  [s,o].forEach(e=>{if(!st[e].ok){const hit=ch[e].find(it=>isLes(it));if(hit)st[e].reason=LES[lesKey(hit)].label}});
+  st.chains=ch;st.sign=sign;return st;
+}
+
+// ---------- route steps & focus ----------
+const SD={R:'right',L:'left'},cap=t=>t[0].toUpperCase()+t.slice(1);
+function stepsFor(t,d){
+  if(t==='near')return[
+    {n:'1',t:'Near cells in the midbrain send a convergence signal',it:['VERG']},
+    {n:'2a',t:'Right CN III (MR subnucleus) → right medial rectus: right eye adducts',it:['p_verg3R','III_R','p_cn3R','MR_R']},
+    {n:'2b',t:'Left CN III (MR subnucleus) → left medial rectus: left eye adducts',it:['p_verg3L','III_L','p_cn3L','MR_L']},
+    {n:'i',t:'This route does not use the MLF, so convergence is spared in INO',it:[],info:true}];
+  if(d==='C')return null;
+  const s=d,o=other(d),S=cap(SD[s]),O=cap(SD[o]);
+  const head=t==='sac'?[
+    {n:'1',t:`${O} frontal eye field (cortex) starts the saccade`,it:['FEF_'+o]},
+    {n:'2',t:`Fibres descend and cross the midline to the ${SD[s]} pons`,it:[`p_fef${o}_pprf${s}`]},
+    {n:'3',t:`${S} PPRF (horizontal gaze centre)`,it:['PPRF_'+s]},
+    {n:'4',t:`${S} abducens (VI) nucleus`,it:[`p_pprf${s}_vi${s}`,'VI_'+s]}]:[
+    {n:'1',t:`Head turns to the patient's ${SD[o]}: ${SD[o]} vestibular nucleus fires`,it:['VN_'+o]},
+    {n:'2',t:`Crosses straight to the ${SD[s]} abducens (VI) nucleus, bypassing FEF and PPRF`,it:[`p_vn${o}_vi${s}`,'VI_'+s]}];
+  const k=head.length+1;
+  return head.concat([
+    {n:k+'a',t:`${S} CN VI → ${SD[s]} lateral rectus: ${SD[s]} eye abducts`,it:['p_cnvi'+s,'LR_'+s]},
+    {n:k+'b',t:`Interneurons cross the midline → ${SD[o]} MLF`,it:[`p_vi${s}_mlf${o}`,'p_mlf'+o]},
+    {n:String(k+1),t:`${O} CN III (MR subnucleus) → ${SD[o]} medial rectus: ${SD[o]} eye adducts`,it:['III_'+o,'p_cn3'+o,'MR_'+o]}]);
+}
+let stepIndex={};
+function renderSteps(list){stepIndex={};
+  if(!list){$('steps').innerHTML='<li class="idle">Choose a gaze direction or Near to trace the route.</li>';return}
+  $('steps').innerHTML=list.map((x,i)=>`<li data-i="${i}" class="${x.info?'info':''}"><span class="dot">${x.n}</span><span>${x.t}</span></li>`).join('');
+  list.forEach((x,i)=>x.it.forEach(it=>stepIndex[it]=i));}
+function stepState(it,state){const i=stepIndex[it];if(i==null)return;
+  const li=$('steps').querySelector(`[data-i="${i}"]`);if(!li||li.classList.contains('blocked'))return;
+  li.classList.remove('done');li.classList.add(state);
+  if(state==='blocked')li.insertAdjacentHTML('beforeend','<em>✕ blocked by lesion here</em>');}
+function setFocus(chs){
+  document.querySelectorAll('#dia .inpath').forEach(e=>e.classList.remove('inpath'));
+  const dia=$('dia');if(!chs||mode==='quiz'){dia.classList.remove('focus');return}
+  dia.classList.add('focus');
+  chs.flat().forEach(it=>{const el=it.startsWith('p_')?$(it):$('n_'+it);if(el)el.classList.add('inpath')});}
+
+// ---------- animation ----------
+let runId=0;const SVGNS='http://www.w3.org/2000/svg';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function clearActive(){document.querySelectorAll('#dia .active').forEach(el=>el.classList.remove('active'));$('pulses').innerHTML=''}
+function blockAt(x,y){const c=document.createElementNS(SVGNS,'circle');c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',reduceMotion()?14:4);c.setAttribute('class','block');$('pulses').appendChild(c);}
+function movePulse(p,stop,my){return new Promise(res=>{
+  const c=document.createElementNS(SVGNS,'circle');c.setAttribute('r','5.5');c.setAttribute('class','pulse '+(['supra','inter','infra'].find(k=>p.classList.contains(k))||''));$('pulses').appendChild(c);
+  const dur=Math.max(160,stop/0.55),t0=performance.now();
+  function f(now){if(runId!==my){c.remove();return res()}
+    const k=Math.min(1,(now-t0)/dur),pt=p.getPointAtLength(stop*k);c.setAttribute('cx',pt.x);c.setAttribute('cy',pt.y);
+    if(k<1)requestAnimationFrame(f);else{c.remove();res()}}
+  requestAnimationFrame(f);});}
+async function runChain(chain,my){
+  for(const it of chain){
+    if(runId!==my)return;
+    if(it.startsWith('p_')){const p=$(it),L=p.getTotalLength();
+      if(isLes(it)){await movePulse(p,L/2,my);if(runId!==my)return;const pt=p.getPointAtLength(L/2);blockAt(pt.x,pt.y);stepState(it,'blocked');return}
+      await movePulse(p,L,my);if(runId!==my)return;p.classList.add('active');stepState(it,'done');
+    }else{const n=$('n_'+it);
+      if(isLes(it)){blockAt(+n.dataset.x,+n.dataset.y);stepState(it,'blocked');return}
+      n.classList.add('active');stepState(it,'done');await sleep(110);}
+  }
+}
+function instantChain(chain){
+  for(const it of chain){
+    if(it.startsWith('p_')){const p=$(it);if(isLes(it)){const L=p.getTotalLength(),pt=p.getPointAtLength(L/2);blockAt(pt.x,pt.y);stepState(it,'blocked');return}p.classList.add('active');stepState(it,'done')}
+    else{const n=$('n_'+it);if(isLes(it)){blockAt(+n.dataset.x,+n.dataset.y);stepState(it,'blocked');return}n.classList.add('active');stepState(it,'done')}
+  }
+}
+
+function setEyes(st){
+  ['R','L'].forEach(e=>{const s=st[e];
+    $('g'+e).style.transform=`translate(${s.x*22}px,${s.y*14}px)`;
+    setLid(e,s.pt);
+    $('p'+e).setAttribute('r',s.my?10:6.5);
+    const n=$('n'+e);n.setAttribute('class',s.nys?(st.sign>0?'nys-pos':'nys-neg'):'');
+    $('ny'+e).textContent=s.nys?'abducting nystagmus':'';
+    $('mg'+e).style.transform=`translate(${s.x*22}px,${s.y*14}px)`;
+    setLid('m'+e,s.pt);
+    $('mp'+e).setAttribute('r',s.my?10:6.5);
+    $('mn'+e).setAttribute('class',n.getAttribute('class'));
+  });
+}
+function setTarget(){
+  const t=$('target'),l=$('tlabel');
+  if(test==='near'){t.style.transform='translate(0px,10px) scale(1)';l.textContent='Near target';l.setAttribute('x',180);return}
+  const sign=dir==='L'?1:dir==='R'?-1:0;
+  if(test==='vor'){t.style.transform='translate(0px,0px)';l.setAttribute('x',180);
+    l.textContent=sign===0?'Fixating, head still':sign>0?"Head turned to patient's right":"Head turned to patient's left";return}
+  t.style.transform=`translate(${sign*120}px,0px)`;l.setAttribute('x',180+sign*120);l.textContent='Target';
+}
+
+async function run(){
+  const my=++runId;const st=compute();setTarget();renderFindings(st);clearActive();
+  renderSteps(stepsFor(test,dir));
+  if(!st.chains){setFocus(null);setEyes(st);return}
+  const chs=[st.chains.R,st.chains.L];setFocus(chs);
+  if(mode==='quiz'){setEyes(st);return}
+  if(reduceMotion()){chs.forEach(instantChain);setEyes(st);return}
+  await Promise.all(chs.map(c=>runChain(c,my)));
+  if(runId===my)setEyes(st);
+}
+
+// ---------- findings ----------
+const NAME={R:'Right eye',L:'Left eye'};
+function primaryLines(){
+  const out=[];
+  if(lesions.has('FEF_R')&&!lesions.has('FEF_L'))out.push("Both eyes deviate to the patient's right");
+  if(lesions.has('FEF_L')&&!lesions.has('FEF_R'))out.push("Both eyes deviate to the patient's left");
+  ['R','L'].forEach(e=>{
+    if(lesions.has('CNIII_'+e))out.push(`${NAME[e]} rests down and out, with ptosis and a dilated pupil`);
+    else if(lesions.has('CNVI_'+e))out.push(`${NAME[e]} is turned in (esotropia)`);
+  });
+  if(!out.length)out.push('Eyes are straight in primary position');
+  return out.map(t=>({t,fail:false}));
+}
+function renderFindings(st){
+  const withReason=mode!=='quiz'||quiz.checked;let head,lines;
+  if(st.kind==='primary'){head='Primary position';lines=primaryLines()}
+  else{
+    head=st.kind==='near'?'Near target (convergence)':test==='sac'?`Saccade to the patient's ${dir==='L'?'left':'right'}`:`Doll's head: eyes driven to the patient's ${dir==='L'?'left':'right'}`;
+    lines=['R','L'].map(e=>{const s=st[e];
+      if(s.ok)return{t:`${NAME[e]} ${s.verb}s fully${s.nys?', with nystagmus':''}`,fail:false};
+      return{t:`${NAME[e]} fails to ${s.verb}${withReason&&s.reason?` (blocked at ${s.reason})`:''}`,fail:true};});
+  }
+  $('testline').textContent=head;
+  $('find').innerHTML=lines.map(l=>`<li class="${l.fail?'fail':''}">${l.t}</li>`).join('');
+  if(mode==='quiz'){$('dx').textContent=`Case ${quiz.n}`;$('note').innerHTML='';return}
+  const p=matchPreset();
+  if(p){$('dx').textContent=PRESETS[p].name;$('note').innerHTML=PRESETS[p].note}
+  else{$('dx').textContent='Custom lesion combination';$('note').innerHTML='Lesions placed: '+[...lesions].map(k=>LES[k].label).join(', ')+'. Run saccades, doll\'s head and near in each direction to see how the combination behaves.'}
+}
+function matchPreset(){return Object.keys(PRESETS).find(k=>{const l=PRESETS[k].les;return l.length===lesions.size&&l.every(x=>lesions.has(x))})}
+
+// ---------- controls ----------
+function renderChips(){const m=matchPreset();
+  $('chips').innerHTML=Object.entries(PRESETS).map(([k,v])=>`<button data-p="${k}" aria-pressed="${k===m}">${v.name}</button>`).join('');}
+$('chips').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;stopExam();lesions=new Set(PRESETS[b.dataset.p].les);dir='C';if(test==='near')test='sac';syncButtons();renderChips();renderMarks();run();});
+function syncButtons(){
+  document.querySelectorAll('[data-test]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.test===test));
+  document.querySelectorAll('[data-dir]').forEach(b=>{b.setAttribute('aria-pressed',test!=='near'&&b.dataset.dir===dir);b.disabled=test==='near'});
+}
+document.querySelectorAll('[data-test]').forEach(b=>b.addEventListener('click',()=>{stopExam();test=b.dataset.test;if(test!=='near')dir='C';syncButtons();run();}));
+document.querySelectorAll('[data-dir]').forEach(b=>b.addEventListener('click',()=>{stopExam();dir=b.dataset.dir;lastDir=dir;syncButtons();run();}));
+
+// ---------- modes & quiz ----------
+function setMode(m){stopExam();mode=m;
+  $('mExplore').setAttribute('aria-pressed',m==='explore');$('mQuiz').setAttribute('aria-pressed',m==='quiz');
+  $('casePanel').hidden=m==='quiz';$('quizBox').hidden=m!=='quiz';$('trace').hidden=m==='quiz';$('lgGuess').hidden=m!=='quiz';$('lgSignal').hidden=m==='quiz';
+  $('diaHint').textContent=m==='quiz'?'Tap the structure(s) you think are damaged. The signal path is hidden in this mode.':'Pathways not used for the current movement are faded; choose Primary to see them all. Tap any structure (FEF, PPRF, VI nucleus, MLF, CN VI or CN III) to place or remove a lesion.';
+  if(m==='quiz')newCase();else{test='sac';dir='C';syncButtons();renderChips();renderMarks();run();}
+}
+function newCase(){stopExam();
+  const pool=Object.keys(PRESETS).filter(k=>k!=='normal'&&k!==quiz.answer);
+  quiz.answer=pool[Math.floor(Math.random()*pool.length)];quiz.guesses=new Set();quiz.checked=false;quiz.n++;
+  lesions=new Set(PRESETS[quiz.answer].les);test='sac';dir='C';syncButtons();
+  $('result').hidden=true;renderMarks();renderQuiz();run();
+}
+function renderQuiz(){
+  $('guessList').textContent='Your answer: '+(quiz.guesses.size?[...quiz.guesses].map(k=>LES[k].label).join(', '):'none selected');
+  $('check').disabled=!quiz.guesses.size||quiz.checked;
+}
+$('check').addEventListener('click',()=>{
+  quiz.checked=true;const ans=PRESETS[quiz.answer];
+  const correct=ans.les.length===quiz.guesses.size&&ans.les.every(k=>quiz.guesses.has(k));
+  const r=$('result');r.hidden=false;r.className='result '+(correct?'good':'bad');
+  r.innerHTML=(correct?`<b>Correct.</b> This is ${ans.name.toLowerCase()}.`:`<b>Not quite.</b> This is ${ans.name.toLowerCase()}: the lesion is at the ${ans.les.map(k=>LES[k].label).join(' and ')}.`)+`<p class="note" style="margin-top:6px">${ans.note}</p>`+(correct?'':whatIf(new Set(quiz.guesses)));
+  renderMarks();renderQuiz();run();
+});
+$('newCase').addEventListener('click',newCase);
+
+// ---------- full exam & what-if ----------
+const EXAM=[{t:'sac',d:'C',label:'Primary position'},{t:'sac',d:'R',label:"Saccade to patient's right"},{t:'sac',d:'L',label:"Saccade to patient's left"},
+  {t:'vor',d:'R',label:"Doll's head, eyes to right"},{t:'vor',d:'L',label:"Doll's head, eyes to left"},{t:'near',d:'C',label:'Near (convergence)'}];
+let examId=0;
+function stopExam(){examId++;$('examStatus').textContent='';$('diaExam').hidden=true;$('fullExam').disabled=false}
+async function fullExam(){
+  const my=++examId;$('fullExam').disabled=true;
+  const P=t=>({t,d:'C',label:'Back to primary'});const seq=[EXAM[0],EXAM[1],P('sac'),EXAM[2],P('sac'),EXAM[3],P('vor'),EXAM[4],P('vor'),EXAM[5],P('sac')];
+  for(let i=0;i<seq.length;i++){
+    if(examId!==my)return;
+    test=seq[i].t;dir=seq[i].d;syncButtons();
+    $('examStatus').textContent=`${i+1}/${seq.length} · ${seq[i].label}`;$('diaExam').hidden=false;$('diaExam').innerHTML=`<span>Full exam ${i+1}/${seq.length}</span> ${seq[i].label}`;
+    await run();await sleep(i===0?900:1600);
+  }
+  if(examId===my){$('examStatus').textContent='Exam complete';$('diaExam').innerHTML='<span>Full exam</span> Complete';$('fullExam').disabled=false}
+}
+$('fullExam').addEventListener('click',fullExam);
+function examState(set,t,d){const keep=[lesions,test,dir];lesions=set;test=t;dir=d;const st=compute();const txt=shortText(st);[lesions,test,dir]=keep;return{st,txt}}
+function shortText(st){
+  if(st.kind==='primary')return primaryLines().map(x=>x.t).join('; ');
+  return['R','L'].map(e=>{const s=st[e];return `${e==='R'?'Right':'Left'} eye ${s.ok?s.verb+'s':'fails to '+s.verb}${s.nys?', nystagmus':''}`}).join(' · ');
+}
+function same(a,b){return['R','L'].every(e=>Math.abs(a[e].x-b[e].x)<.02&&Math.abs(a[e].y-b[e].y)<.02&&a[e].pt===b[e].pt&&a[e].my===b[e].my&&a[e].nys===b[e].nys)}
+function mini(st){
+  const eye=(cx,s)=>`<g transform="translate(${cx},16)"><path d="M-15,0 Q0,-11 15,0 Q0,11 -15,0Z" class="sclera" stroke="var(--skin-edge)" stroke-width="1"/><circle cx="${(s.x*6).toFixed(1)}" cy="${(s.y*4).toFixed(1)}" r="${s.my?5.5:5}" class="iris"/>${s.pt?'<path d="M-15,0 Q0,-11 15,0" fill="none" stroke="var(--skin-edge)" stroke-width="3" transform="translate(0,4)"/>':''}${s.nys?'<text y="-8" text-anchor="middle" class="mininys">≈</text>':''}</g>`;
+  return `<svg class="mini" viewBox="0 0 84 32" aria-hidden="true">${eye(22,st.R)}${eye(62,st.L)}</svg>`;
+}
+function whatIf(guess){
+  let anyDiff=false;
+  const rows=EXAM.map((x,i)=>{const a=examState(lesions,x.t,x.d),b=examState(guess,x.t,x.d),diff=!same(a.st,b.st);if(diff)anyDiff=true;
+    return `<tr class="${diff?'diff':''}"><th scope="row"><button class="linkbtn" data-ex="${i}">${x.label}</button>${diff?'<br><span class="tag">Deciding sign</span>':''}</th><td>${mini(a.st)}${a.txt}</td><td>${mini(b.st)}${b.txt}</td></tr>`}).join('');
+  const lead=anyDiff?'Compare this patient with the patient your answer would produce. The highlighted rows are the signs that tell them apart. Tap a test to show it on the patient.'
+    :'Your answer produces the same signs on every bedside test, so the two sites cannot be separated clinically here; the anatomical site still differs.';
+  return `<p class="note" style="margin-top:10px"><b>What if?</b> ${lead}</p><div class="cmp-wrap"><table class="cmp"><thead><tr><th>Test</th><th>This patient</th><th>Lesion at your answer</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+$('result').addEventListener('click',e=>{const b=e.target.closest('[data-ex]');if(!b)return;stopExam();const x=EXAM[+b.dataset.ex];test=x.t;dir=x.d;syncButtons();run();
+  $('eyes').scrollIntoView({behavior:reduceMotion()?'auto':'smooth',block:'center'});});
+$('mExplore').addEventListener('click',()=>{if(mode!=='explore')setMode('explore')});
+$('mQuiz').addEventListener('click',()=>{if(mode!=='quiz')setMode('quiz')});
+
+renderChips();renderMarks();syncButtons();setEyes(compute());
+setTimeout(run,450);
+window.__m1Enter=()=>{stopExam();run();};
+})();
+</script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const NS='http://www.w3.org/2000/svg';
+const reduceMotion=()=>window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const SD={L:'left',R:'right'},cap=t=>t[0].toUpperCase()+t.slice(1),other=s=>s==='L'?'R':'L';
+
+const LES={
+  ON_L:{label:'left optic nerve',path:'q_on_L'},ON_R:{label:'right optic nerve',path:'q_on_R'},
+  CHI:{label:'optic chiasm (crossing fibres)'},
+  TRACT_L:{label:'left optic tract',path:'q_tract_L'},TRACT_R:{label:'right optic tract',path:'q_tract_R'},
+  MEY_L:{label:"left Meyer's loop (temporal lobe)",path:'q_mey_L'},MEY_R:{label:"right Meyer's loop (temporal lobe)",path:'q_mey_R'},
+  PAR_L:{label:'left parietal radiation',path:'q_par_L'},PAR_R:{label:'right parietal radiation',path:'q_par_R'},
+  OCC_L:{label:'left occipital cortex'},OCC_R:{label:'right occipital cortex'}
+};
+const pathToLes={};Object.entries(LES).forEach(([k,v])=>{if(v.path)pathToLes[v.path]=k});
+const lesKey=it=>LES[it]?it:pathToLes[it];
+
+const PRESETS={
+  normal:{name:'Normal',les:[],note:"Each eye sees both halves of the visual field. Fibres from the <b>nasal retina</b> (which sees the temporal field) cross at the chiasm; fibres from the <b>temporal retina</b> (nasal field) stay on the same side. So everything in the patient's right visual field is processed by the left hemisphere. Tap a quadrant of either field to trace its route."},
+  onR:{name:'Right optic nerve lesion',les:['ON_R'],note:"The right eye loses vision while the left field stays full, and there is a <b>marked right RAPD</b>. Causes include optic neuritis, ischaemic optic neuropathy, compression and trauma. A lesion where the nerve joins the chiasm can also catch crossing fibres from the other eye (junctional scotoma)."},
+  chi:{name:'Chiasmal lesion',les:['CHI'],note:"A central chiasmal lesion cuts the crossing nasal fibres, which carry the temporal field of each eye: <b>bitemporal hemianopia</b>. There is no RAPD because both eyes lose input equally. A pituitary macroadenoma presses from below, so the superior temporal quadrants are often lost first; a craniopharyngioma, from above, often affects the inferior quadrants first."},
+  tractL:{name:'Left optic tract lesion',les:['TRACT_L'],note:"<b>Right homonymous hemianopia</b>. Partial tract lesions are typically incongruous. The tract carries slightly more crossed fibres, so there is a <b>small RAPD in the right eye</b> (opposite the lesion), and band (bow-tie) atrophy can develop in the right optic disc. Pupillary fibres leave the tract before the LGN, so this is the last place a field defect comes with an RAPD."},
+  meyL:{name:"Left Meyer's loop (temporal lobe)",les:['MEY_L'],note:"Inferior retinal fibres sweep forward around the temporal horn, so a left temporal lobe lesion gives a <b>right superior homonymous quadrantanopia</b> ('pie in the sky'). Causes include temporal lobe tumour, stroke and temporal lobectomy. Pupils are normal."},
+  parL:{name:'Left parietal radiation',les:['PAR_L'],note:"Superior retinal fibres run through the parietal lobe, so a left parietal lesion gives a <b>right inferior homonymous quadrantanopia</b> ('pie on the floor'). Parietal lesions may also cause asymmetric optokinetic nystagmus. Pupils are normal."},
+  occL:{name:'Left occipital lesion (PCA stroke)',les:['OCC_L'],note:"<b>Right homonymous hemianopia</b>, highly congruous, often with <b>macular sparing</b> because the occipital pole also receives blood from the middle cerebral artery. Pupils are normal: a hemianopia with normal pupil reactions points to a lesion behind the LGN."}
+};
+
+let lesions=new Set(),mode='explore',sel=null;
+let quiz={answer:null,guesses:new Set(),checked:false,n:0};
+
+// ---------- engine ----------
+function route(e,fx,fy){
+  const h=fx==='R'?'L':'R',crossed=(e==='L'&&fx==='L')||(e==='R'&&fx==='R');
+  return['q_on_'+e,...(crossed?['CHI','q_cross_'+e]:['q_unc_'+e]),'q_tract_'+h,'LGN_'+h,fy==='S'?'q_mey_'+h:'q_par_'+h,'OCC_'+h];
+}
+function lost(set,e,x,y){
+  const r=Math.hypot(x,y);
+  return route(e,x>0?'R':'L',y>0?'S':'I').some(it=>{const k=lesKey(it);return k&&set.has(k)&&!(k.startsWith('OCC')&&r<=5)});
+}
+const GRID=[-27,-21,-15,-9,-3,3,9,15,21,27];
+function pupilInput(set,e){
+  if(set.has('ON_'+e))return 0;
+  const crossedOK=!set.has('CHI')&&!set.has('TRACT_'+other(e)),uncrossedOK=!set.has('TRACT_'+e);
+  return .53*crossedOK+.47*uncrossedOK;
+}
+function rapdText(set){
+  const iL=pupilInput(set,'L'),iR=pupilInput(set,'R'),d=iR-iL;
+  if(iL===0&&iR===0)return'No pupil response to light in either eye.';
+  if(Math.abs(d)<.03)return'No RAPD: both pupils constrict equally whichever eye is lit.';
+  const e=d<0?'right':'left';return Math.abs(d)>.3?`Marked ${e} RAPD: both pupils dilate when the light swings to the ${e} eye.`:`Small ${e} RAPD: both pupils constrict less when the light swings to the ${e} eye.`;
+}
+
+// ---------- fields ----------
+function quadPath(cx,cy,R,fx,fy){
+  if(fx==='R'&&fy==='S')return`M${cx},${cy} L${cx+R},${cy} A${R},${R} 0 0 0 ${cx},${cy-R} Z`;
+  if(fx==='L'&&fy==='S')return`M${cx},${cy} L${cx},${cy-R} A${R},${R} 0 0 0 ${cx-R},${cy} Z`;
+  if(fx==='L'&&fy==='I')return`M${cx},${cy} L${cx-R},${cy} A${R},${R} 0 0 0 ${cx},${cy+R} Z`;
+  return`M${cx},${cy} L${cx},${cy+R} A${R},${R} 0 0 0 ${cx+R},${cy} Z`;
+}
+let clipN=0;
+function fieldMarkup(set,{k,cx,cy,labels,hits,selQ}){
+  let out='';
+  [['L',cx[0]],['R',cx[1]]].forEach(([e,x0])=>{
+    const R=30*k,id='fc'+(++clipN);
+    out+=`<clipPath id="${id}"><circle cx="${x0}" cy="${cy}" r="${R}"/></clipPath><circle cx="${x0}" cy="${cy}" r="${R}" class="fseen"/><g clip-path="url(#${id})">`;
+    GRID.forEach(gx=>GRID.forEach(gy=>{if(Math.hypot(gx,gy)>31)return;if(lost(set,e,gx,gy))out+=`<rect x="${(x0+(gx-3)*k).toFixed(1)}" y="${(cy-(gy+3)*k).toFixed(1)}" width="${(6*k+.4).toFixed(1)}" height="${(6*k+.4).toFixed(1)}" class="flost"/>`}));
+    out+=`</g><line x1="${x0-R}" x2="${x0+R}" y1="${cy}" y2="${cy}" class="faxis"/><line x1="${x0}" x2="${x0}" y1="${cy-R}" y2="${cy+R}" class="faxis"/>`;
+    out+=`<ellipse cx="${x0+(e==='R'?15:-15)*k}" cy="${cy+1.5*k}" rx="${2.4*k}" ry="${3.4*k}" class="flost" opacity=".85"/><circle cx="${x0}" cy="${cy}" r="${Math.max(1.5,k*.8)}" class="ffix"/><circle cx="${x0}" cy="${cy}" r="${R}" class="fring"/>`;
+    if(labels)out+=`<text class="eyecap" x="${x0}" y="${cy+R+16}" text-anchor="middle">${e==='L'?'Left eye (OS)':'Right eye (OD)'}</text><text class="lbl sm" x="${x0-R}" y="${cy-R-4}">${e==='L'?'temporal':'nasal'}</text><text class="lbl sm" x="${x0+R}" y="${cy-R-4}" text-anchor="end">${e==='L'?'nasal':'temporal'}</text>`;
+    if(selQ&&selQ.e===e)out+=`<path d="${quadPath(x0,cy,R,selQ.fx,selQ.fy)}" class="fsel"/>`;
+    if(hits)['S','I'].forEach(fy=>['L','R'].forEach(fx=>{out+=`<path d="${quadPath(x0,cy,R,fx,fy)}" class="fhit" data-e="${e}" data-fx="${fx}" data-fy="${fy}" tabindex="0" role="button" aria-label="Trace ${e==='L'?'left':'right'} eye, ${fy==='S'?'superior':'inferior'} ${((e==='L')===(fx==='L'))?'temporal':'nasal'} field"/>`}));
+  });
+  return out;
+}
+function renderFields(){$('m5fields').innerHTML=fieldMarkup(lesions,{k:2.25,cx:[90,270],cy:94,labels:true,hits:mode!=='quiz',selQ:sel});}
+function pupilMarkup(set){
+  const iL=pupilInput(set,'L'),iR=pupilInput(set,'R');
+  const row=(y,lit,inp,label)=>{const r=(7.5-4*inp).toFixed(1);
+    const eye=(cx,isLit)=>`<g transform="translate(${cx},${y})"><path d="M-24,0 Q0,-17 24,0 Q0,17 -24,0Z" class="sclera" stroke="var(--skin-edge)" stroke-width="1.2"/><use href="#irisSym" x="-10.5" y="-10.5" width="21" height="21"/><circle r="${r}" class="pupil"/>${isLit?'<circle r="16" fill="none" stroke="var(--signal)" stroke-width="2" stroke-dasharray="3 3"/>':''}</g>`;
+    return`<text class="lbl sm" x="0" y="${y+4}">${label}</text>${eye(178,lit==='L')}${eye(268,lit==='R')}`;};
+  return`<text class="lbl sm" x="178" y="12" text-anchor="middle">L</text><text class="lbl sm" x="268" y="12" text-anchor="middle">R</text>`+row(38,'R',iR,'Light on right eye')+row(88,'L',iL,'Swing to left eye');
+}
+function renderPupils(){$('m5pupils').innerHTML=pupilMarkup(lesions);$('m5pupilText').textContent=rapdText(lesions);}
+
+// ---------- findings ----------
+function quadLoss(set,e,fx,fy){let n=0,l=0;GRID.forEach(x=>GRID.forEach(y=>{if(Math.hypot(x,y)>31)return;if((x>0)!==(fx==='R')||(y>0)!==(fy==='S'))return;n++;if(lost(set,e,x,y))l++}));return l/n}
+function describeEye(set,e){
+  const tx=e==='L'?'L':'R',nx=other(tx),q={};
+  [['ST',tx,'S'],['IT',tx,'I'],['SN',nx,'S'],['IN',nx,'I']].forEach(([k,fx,fy])=>q[k]=quadLoss(set,e,fx,fy));
+  const full=v=>v>.8,none=v=>v===0;
+  if(Object.values(q).every(none))return'full field';
+  if(Object.values(q).every(v=>v===1))return'no vision';
+  const parts=[];
+  if(full(q.ST)&&full(q.IT))parts.push('temporal half lost');else{if(full(q.ST))parts.push('superior temporal quadrant lost');if(full(q.IT))parts.push('inferior temporal quadrant lost')}
+  if(full(q.SN)&&full(q.IN))parts.push('nasal half lost');else{if(full(q.SN))parts.push('superior nasal quadrant lost');if(full(q.IN))parts.push('inferior nasal quadrant lost')}
+  let t=parts.join(', ')||'partial field loss';
+  if([...set].some(k=>k.startsWith('OCC'))&&!lost(set,e,3,3)&&!lost(set,e,-3,3)&&!Object.values(q).every(none))t+=' (macula spared)';
+  return t;
+}
+function matchPreset(){return Object.keys(PRESETS).find(k=>{const l=PRESETS[k].les;return l.length===lesions.size&&l.every(x=>lesions.has(x))})}
+function renderFindings(){
+  $('m5list').innerHTML=`<li>Left eye: ${describeEye(lesions,'L')}</li><li>Right eye: ${describeEye(lesions,'R')}</li><li>Pupils: ${rapdText(lesions)}</li>`;
+  if(mode==='quiz'){$('m5dx').textContent=`Case ${quiz.n}`;$('m5note').innerHTML='';return}
+  const p=matchPreset();
+  if(p){$('m5dx').textContent=PRESETS[p].name;$('m5note').innerHTML=PRESETS[p].note}
+  else{$('m5dx').textContent='Custom lesion combination';$('m5note').innerHTML='Lesions placed: '+[...lesions].map(k=>LES[k].label).join(', ')+'. Tap quadrants to trace which fibres are blocked.'}
+}
+
+// ---------- diagram: hits, marks ----------
+Object.entries(LES).forEach(([k,v])=>{if(!v.path)return;const p=document.createElementNS(NS,'path');
+  p.setAttribute('d',$(v.path).getAttribute('d'));p.setAttribute('class','hit');p.dataset.les=k;p.setAttribute('tabindex','0');p.setAttribute('role','button');p.setAttribute('aria-label','Toggle lesion: '+v.label);$('m5hits').appendChild(p)});
+document.querySelectorAll('#m5dia .lesionable').forEach(g=>{g.setAttribute('tabindex','0');g.setAttribute('role','button');g.setAttribute('aria-label','Toggle lesion: '+LES[g.dataset.les].label)});
+function lesPoint(k){const v=LES[k];if(v.path){const p=$(v.path),L=p.getTotalLength(),pt=p.getPointAtLength(v.path.startsWith('q_mey')?L*.42:L/2);return[pt.x,pt.y]}const g=$('v_'+k);return[+g.dataset.x,+g.dataset.y]}
+function mark(k,cls){const[x,y]=lesPoint(k),g=document.createElementNS(NS,'g');g.setAttribute('class','mark '+cls);g.setAttribute('pointer-events','none');
+  g.innerHTML=`<circle cx="${x}" cy="${y}" r="10"/><line x1="${x-6}" y1="${y-6}" x2="${x+6}" y2="${y+6}"/><line x1="${x+6}" y1="${y-6}" x2="${x-6}" y2="${y+6}"/>`;$('m5marks').appendChild(g)}
+function renderMarks(){$('m5marks').innerHTML='';if(mode!=='quiz'||quiz.checked)lesions.forEach(k=>mark(k,'lesion'));if(mode==='quiz')quiz.guesses.forEach(k=>{if(!(quiz.checked&&lesions.has(k)))mark(k,'guess')})}
+function onLesion(k){
+  if(mode==='quiz'){if(quiz.checked)return;quiz.guesses.has(k)?quiz.guesses.delete(k):quiz.guesses.add(k);renderMarks();renderQuiz();return}
+  lesions.has(k)?lesions.delete(k):lesions.add(k);refresh(true);
+}
+$('m5dia').addEventListener('click',e=>{const t=e.target.closest('[data-les]');if(t)onLesion(t.dataset.les)});
+$('m5dia').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const t=e.target.closest('[data-les]');if(t){e.preventDefault();onLesion(t.dataset.les)}});
+
+// ---------- trace ----------
+let runId=0,stepIndex={};
+function stepsFor(q){
+  const e=q.e,h=q.fx==='R'?'L':'R',crossed=(e==='L'&&q.fx==='L')||(e==='R'&&q.fx==='R'),E=cap(SD[e]),H=cap(SD[h]);
+  return[
+    {n:'1',t:`${E} eye, ${q.fy==='S'?'superior':'inferior'} ${crossed?'temporal':'nasal'} field → ${q.fy==='S'?'inferior':'superior'} ${crossed?'nasal':'temporal'} retina`,it:[]},
+    {n:'2',t:`${E} optic nerve`,it:['q_on_'+e]},
+    {n:'3',t:crossed?'Nasal fibres cross at the chiasm':'Temporal fibres stay on the same side at the chiasm',it:crossed?['CHI','q_cross_'+e]:['q_unc_'+e]},
+    {n:'4',t:`${H} optic tract → ${H} LGN`,it:['q_tract_'+h,'LGN_'+h]},
+    {n:'5',t:q.fy==='S'?`${H} Meyer's loop, through the temporal lobe`:`${H} parietal radiation`,it:[q.fy==='S'?'q_mey_'+h:'q_par_'+h]},
+    {n:'6',t:`${H} occipital cortex, ${q.fy==='S'?'below':'above'} the calcarine fissure`,it:['OCC_'+h]}];
+}
+function renderSteps(){
+  stepIndex={};
+  if(!sel){$('m5steps').innerHTML='<li class="idle">Tap a quadrant of either visual field to trace its fibres.</li>';return}
+  const list=stepsFor(sel);
+  $('m5steps').innerHTML=list.map((x,i)=>`<li data-i="${i}" class="${i===0?'done':''}"><span class="dot">${x.n}</span><span>${x.t}</span></li>`).join('');
+  list.forEach((x,i)=>x.it.forEach(it=>stepIndex[it]=i));
+}
+function stepState(it,state){const i=stepIndex[it];if(i==null)return;const li=$('m5steps').querySelector(`[data-i="${i}"]`);if(!li||li.classList.contains('blocked'))return;
+  li.classList.remove('done');li.classList.add(state);if(state==='blocked')li.insertAdjacentHTML('beforeend','<em>✕ blocked by lesion here</em>')}
+const elFor=it=>it.startsWith('q_')?$(it):$('v_'+it);
+const isLes=it=>{const k=lesKey(it);return!!k&&lesions.has(k)};
+function clearActive(){document.querySelectorAll('#m5dia .active').forEach(el=>el.classList.remove('active'));$('m5pulses').innerHTML=''}
+function setFocus(chain){document.querySelectorAll('#m5dia .inpath').forEach(e=>e.classList.remove('inpath'));
+  if(!chain){$('m5dia').classList.remove('focus');return}$('m5dia').classList.add('focus');chain.forEach(it=>{const el=elFor(it);if(el)el.classList.add('inpath')})}
+function blockAt(x,y){const c=document.createElementNS(NS,'circle');c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',reduceMotion()?14:4);c.setAttribute('class','block');$('m5pulses').appendChild(c)}
+function movePulse(p,stop,my){return new Promise(res=>{const c=document.createElementNS(NS,'circle');c.setAttribute('r','5.5');c.setAttribute('class','pulse');$('m5pulses').appendChild(c);
+  const dur=Math.max(160,stop/0.55),t0=performance.now();
+  (function f(now){if(runId!==my){c.remove();return res()}const k=Math.min(1,(now-t0)/dur),pt=p.getPointAtLength(stop*k);c.setAttribute('cx',pt.x);c.setAttribute('cy',pt.y);if(k<1)requestAnimationFrame(f);else{c.remove();res()}})(t0)})}
+async function trace(){
+  const my=++runId;clearActive();renderSteps();
+  if(!sel||mode==='quiz'){setFocus(null);return}
+  const chain=route(sel.e,sel.fx,sel.fy);setFocus(chain);const instant=reduceMotion();
+  for(const it of chain){
+    if(runId!==my)return;const el=elFor(it);
+    if(it.startsWith('q_')){const L=el.getTotalLength();
+      if(isLes(it)){if(!instant)await movePulse(el,L/2,my);if(runId!==my)return;const pt=el.getPointAtLength(L/2);blockAt(pt.x,pt.y);stepState(it,'blocked');return}
+      if(!instant)await movePulse(el,L,my);if(runId!==my)return;el.classList.add('active');stepState(it,'done');
+    }else{const blocked=isLes(it)&&!(it.startsWith('OCC'));
+      if(isLes(it)){blockAt(+el.dataset.x,+el.dataset.y);stepState(it,'blocked');return}
+      el.classList.add('active');stepState(it,'done');if(!instant)await sleep(110);}
+  }
+}
+$('m5fields').addEventListener('click',e=>{const t=e.target.closest('.fhit');if(!t)return;const q={e:t.dataset.e,fx:t.dataset.fx,fy:t.dataset.fy};
+  sel=(sel&&sel.e===q.e&&sel.fx===q.fx&&sel.fy===q.fy)?null:q;renderFields();trace()});
+$('m5fields').addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const t=e.target.closest('.fhit');if(t){e.preventDefault();t.dispatchEvent(new MouseEvent('click',{bubbles:true}))}});
+
+// ---------- cases, modes, quiz ----------
+function renderChips(){const m=matchPreset();$('m5chips').innerHTML=Object.entries(PRESETS).map(([k,v])=>`<button data-p="${k}" aria-pressed="${k===m}">${v.name}</button>`).join('')}
+$('m5chips').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;lesions=new Set(PRESETS[b.dataset.p].les);sel=null;refresh(true)});
+function refresh(retrace){renderChips();renderMarks();renderFields();renderPupils();renderFindings();if(retrace)trace()}
+function setMode(m){mode=m;sel=null;
+  $('m5Explore').setAttribute('aria-pressed',m==='explore');$('m5Quiz').setAttribute('aria-pressed',m==='quiz');
+  $('m5casePanel').hidden=m==='quiz';$('m5quizBox').hidden=m!=='quiz';$('m5trace').hidden=m==='quiz';
+  $('m5lgGuess').hidden=m!=='quiz';$('m5lgSignal').hidden=m==='quiz';
+  $('m5fieldCap').textContent=m==='quiz'?'Visual fields (30°), plotted as the patient sees them. Dark = not seen.':'Visual fields (30°), plotted as the patient sees them. Dark = not seen. Tap a quadrant to trace its fibres.';
+  $('m5hint').textContent=m==='quiz'?'Tap the structure(s) you think are damaged.':'Viewed from above: the patient\'s left is on your left. Coral fibres come from the nasal retina and cross at the chiasm; grey fibres come from the temporal retina and stay on the same side. Tap any structure to place or remove a lesion.';
+  if(m==='quiz')newCase();else refresh(true);
+}
+function newCase(){
+  const pool=Object.keys(PRESETS).filter(k=>k!=='normal'&&k!==quiz.answer);
+  quiz.answer=pool[Math.floor(Math.random()*pool.length)];quiz.guesses=new Set();quiz.checked=false;quiz.n++;
+  lesions=new Set(PRESETS[quiz.answer].les);$('m5result').hidden=true;refresh(true);renderQuiz();
+}
+function renderQuiz(){$('m5guessList').textContent='Your answer: '+(quiz.guesses.size?[...quiz.guesses].map(k=>LES[k].label).join(', '):'none selected');$('m5check').disabled=!quiz.guesses.size||quiz.checked}
+function whatIf(guess){
+  const fA=fieldMarkup(lesions,{k:.95,cx:[34,104],cy:34,labels:false}),fB=fieldMarkup(guess,{k:.95,cx:[34,104],cy:34,labels:false});
+  const rows=[
+    {label:'Left eye field',a:describeEye(lesions,'L'),b:describeEye(guess,'L')},
+    {label:'Right eye field',a:describeEye(lesions,'R'),b:describeEye(guess,'R')},
+    {label:'Pupils',a:rapdText(lesions),b:rapdText(guess)}];
+  const tr=rows.map(r=>{const diff=r.a!==r.b;return`<tr class="${diff?'diff':''}"><th scope="row">${r.label}${diff?'<br><span class="tag">Deciding sign</span>':''}</th><td>${r.a}</td><td>${r.b}</td></tr>`}).join('');
+  return`<p class="note" style="margin-top:10px"><b>What if?</b> Compare this patient with the patient your answer would produce. Highlighted rows are the signs that tell them apart.</p>
+  <div class="cmp-wrap"><table class="cmp"><thead><tr><th>Test</th><th>This patient</th><th>Lesion at your answer</th></tr></thead><tbody>
+  <tr><th scope="row">Fields (L, R)</th><td><svg class="minif" viewBox="0 0 138 70" aria-hidden="true">${fA}</svg></td><td><svg class="minif" viewBox="0 0 138 70" aria-hidden="true">${fB}</svg></td></tr>${tr}</tbody></table></div>`;
+}
+$('m5check').addEventListener('click',()=>{
+  quiz.checked=true;const ans=PRESETS[quiz.answer];
+  const correct=ans.les.length===quiz.guesses.size&&ans.les.every(k=>quiz.guesses.has(k));
+  const r=$('m5result');r.hidden=false;r.className='result '+(correct?'good':'bad');
+  r.innerHTML=(correct?`<b>Correct.</b> This is a ${ans.name.toLowerCase()}.`:`<b>Not quite.</b> This is a ${ans.name.toLowerCase()}: the lesion is at the ${ans.les.map(k=>LES[k].label).join(' and ')}.`)+`<p class="note" style="margin-top:6px">${ans.note}</p>`+(correct?'':whatIf(new Set(quiz.guesses)));
+  renderMarks();renderQuiz();renderFindings();
+});
+$('m5newCase').addEventListener('click',newCase);
+$('m5Explore').addEventListener('click',()=>{if(mode!=='explore')setMode('explore')});
+$('m5Quiz').addEventListener('click',()=>{if(mode!=='quiz')setMode('quiz')});
+
+refresh(false);renderSteps();
+window.__m5Enter=()=>{trace()};
+})();
+
+// ---------- router ----------
+(function(){
+  const $=id=>document.getElementById(id);
+  const views=['home','m1','m5'];
+  function show(v,push){
+    if(!views.includes(v))v='home';
+    views.forEach(x=>$('view-'+x).hidden=x!==v);
+    $('topbar').hidden=v==='home';
+    document.querySelectorAll('.tab[data-go]').forEach(t=>t.setAttribute('aria-current',t.dataset.go===v?'page':'false'));
+    if(push){try{history.pushState(null,'',v==='home'?location.pathname+location.search:'#'+v)}catch(e){}}
+    window.scrollTo(0,0);
+    if(v==='m1'&&window.__m1Enter)window.__m1Enter();
+    if(v==='m5'&&window.__m5Enter)window.__m5Enter();
+  }
+  document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(b){e.preventDefault();show(b.dataset.go,true)}});
+  const fromHash=()=>show((location.hash||'').replace('#',''),false);
+  window.addEventListener('popstate',fromHash);window.addEventListener('hashchange',fromHash);
+  fromHash();
+})();
+</script>
+
+
+<script>
+if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js').catch(()=>{})})}
+</script>
+</body>
+</html>
