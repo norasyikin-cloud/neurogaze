@@ -638,6 +638,15 @@ const PRESETS={
 let lesions=new Set(), test='sac', dir='C', lastDir='C', mode='explore';
 let quiz={answer:null,guesses:new Set(),checked:false,n:0};
 const reduceMotion=()=>window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+// On phones the diagram sits below the controls: scroll it into view and wait before animating.
+const narrow=()=>window.matchMedia('(max-width:880px)').matches;
+function bringIntoView(el){
+  const r=el.getBoundingClientRect(),vh=window.innerHeight,seen=Math.min(r.bottom,vh)-Math.max(r.top,0);
+  if(!narrow()||seen>=Math.min(r.height,vh)*0.6)return Promise.resolve();
+  el.scrollIntoView({behavior:reduceMotion()?'auto':'smooth',block:'center'});
+  return new Promise(res=>{const t=setTimeout(()=>{io.disconnect();res()},1500);
+    const io=new IntersectionObserver(es=>{if(es[0].intersectionRatio>=0.6){io.disconnect();clearTimeout(t);setTimeout(res,150)}},{threshold:0.6});io.observe(el)});
+}
 
 // hit areas for nerve/tract lesions
 const hits=$('hits');
@@ -797,12 +806,13 @@ function setTarget(){
   t.style.transform=`translate(${sign*120}px,0px)`;l.setAttribute('x',180+sign*120);l.textContent='Target';
 }
 
-async function run(){
+async function run(quiet){
   const my=++runId;const st=compute();setTarget();renderFindings(st);clearActive();
   renderSteps(stepsFor(test,dir));
   if(!st.chains){setFocus(null);setEyes(st);return}
   const chs=[st.chains.R,st.chains.L];setFocus(chs);
   if(mode==='quiz'){setEyes(st);return}
+  if(!quiet){await bringIntoView($('dia'));if(runId!==my)return}
   if(reduceMotion()){chs.forEach(instantChain);setEyes(st);return}
   await Promise.all(chs.map(c=>runChain(c,my)));
   if(runId===my)setEyes(st);
@@ -917,8 +927,8 @@ $('mExplore').addEventListener('click',()=>{if(mode!=='explore')setMode('explore
 $('mQuiz').addEventListener('click',()=>{if(mode!=='quiz')setMode('quiz')});
 
 renderChips();renderMarks();syncButtons();setEyes(compute());
-setTimeout(run,450);
-window.__m1Enter=()=>{stopExam();run();};
+setTimeout(()=>run(true),450);
+window.__m1Enter=()=>{stopExam();run(true);};
 })();
 </script>
 <script>
@@ -926,6 +936,15 @@ window.__m1Enter=()=>{stopExam();run();};
 const $=id=>document.getElementById(id);
 const NS='http://www.w3.org/2000/svg';
 const reduceMotion=()=>window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+// On phones the diagram sits below the controls: scroll it into view and wait before animating.
+const narrow=()=>window.matchMedia('(max-width:880px)').matches;
+function bringIntoView(el){
+  const r=el.getBoundingClientRect(),vh=window.innerHeight,seen=Math.min(r.bottom,vh)-Math.max(r.top,0);
+  if(!narrow()||seen>=Math.min(r.height,vh)*0.6)return Promise.resolve();
+  el.scrollIntoView({behavior:reduceMotion()?'auto':'smooth',block:'center'});
+  return new Promise(res=>{const t=setTimeout(()=>{io.disconnect();res()},1500);
+    const io=new IntersectionObserver(es=>{if(es[0].intersectionRatio>=0.6){io.disconnect();clearTimeout(t);setTimeout(res,150)}},{threshold:0.6});io.observe(el)});
+}
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const SD={L:'left',R:'right'},cap=t=>t[0].toUpperCase()+t.slice(1),other=s=>s==='L'?'R':'L';
 
@@ -1080,6 +1099,7 @@ async function trace(){
   const my=++runId;clearActive();renderSteps();
   if(!sel||mode==='quiz'){setFocus(null);return}
   const chain=route(sel.e,sel.fx,sel.fy);setFocus(chain);const instant=reduceMotion();
+  await bringIntoView($('m5dia'));if(runId!==my)return;
   for(const it of chain){
     if(runId!==my)return;const el=elFor(it);
     if(it.startsWith('q_')){const L=el.getTotalLength();
